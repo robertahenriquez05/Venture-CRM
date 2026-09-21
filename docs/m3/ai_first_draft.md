@@ -1,5 +1,4 @@
 ```mermaid
-```
 erDiagram
     USER ||--o{ CONTACT : owns
     ORGANIZATION ||--o{ CONTACT : employs
@@ -56,3 +55,4 @@ erDiagram
         int contact_id FK
         int tag_id FK
     }
+```
