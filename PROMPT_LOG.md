@@ -26,7 +26,7 @@ erDiagram with entities, attributes, and cardinalities."
   both traced correctly to US-3 and US-6
 - Full reasoning for each change is in docs/m3/critique.md
 
-- ## IAP M4 — ADR-001 (2026-09-29)
+## IAP M4 — ADR-001 (2026-09-29)
 
 **Tool:** Claude (claude.ai chat)
 
