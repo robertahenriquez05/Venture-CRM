@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Venture CRM — Contacts</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; color: #1f2933; }
+    h1 { margin-bottom: 4px; }
+    .sub { color: #616e7c; margin-top: 0; }
+    form { background: #f5f7fa; padding: 16px; border-radius: 8px; margin: 24px 0; }
+    form p { margin: 8px 0; }
+    label { display: inline-block; width: 90px; font-weight: 600; }
+    input, select { padding: 6px; width: 260px; }
+    button { margin-top: 8px; padding: 8px 16px; background: #2563eb; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e4e7eb; }
+    .errorlist { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1>Venture CRM</h1>
+  <p class="sub">Contacts ({{ contacts|length }} saved in database)</p>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Add contact</button>
+  </form>
+
+  <table>
+    <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Stage</th><th>Added</th></tr></thead>
+    <tbody>
+      {% for c in contacts %}
+        <tr>
+          <td>{{ c.name }}</td>
+          <td>{{ c.company }}</td>
+          <td>{{ c.email }}</td>
+          <td>{{ c.get_stage_display }}</td>
+          <td>{{ c.created_at|date:"M j, Y g:i a" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No contacts yet — add one above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
