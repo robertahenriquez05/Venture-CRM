@@ -1,0 +1,36 @@
+$ git checkout -- tracker/models.py      # revert the injected fault
+$ git diff tracker/models.py               # (no output: file is back to the committed version)
+
+$ python manage.py test --verbosity 2   # full M6 suite, fault reverted
+Found 23 test(s).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+System check identified no issues (0 silenced).
+test_saving_a_valid_form_stores_exactly_what_was_entered (tracker.test_forms.ContactFormSaveTests.test_saving_a_valid_form_stores_exactly_what_was_entered) ... ok
+test_surrounding_whitespace_is_trimmed_before_saving (tracker.test_forms.ContactFormSaveTests.test_surrounding_whitespace_is_trimmed_before_saving) ... ok
+test_complete_contact_is_valid (tracker.test_forms.ContactFormValidationTests.test_complete_contact_is_valid) ... ok
+test_email_and_company_are_optional (tracker.test_forms.ContactFormValidationTests.test_email_and_company_are_optional) ... ok
+test_every_pipeline_stage_is_accepted (tracker.test_forms.ContactFormValidationTests.test_every_pipeline_stage_is_accepted) ... ok
+test_malformed_email_is_rejected (tracker.test_forms.ContactFormValidationTests.test_malformed_email_is_rejected) ... ok
+test_name_is_required (tracker.test_forms.ContactFormValidationTests.test_name_is_required) ... ok
+test_name_of_121_characters_is_rejected (tracker.test_forms.ContactFormValidationTests.test_name_of_121_characters_is_rejected) ... ok
+test_name_of_exactly_120_characters_is_accepted (tracker.test_forms.ContactFormValidationTests.test_name_of_exactly_120_characters_is_accepted) ... ok
+test_stage_outside_the_pipeline_is_rejected (tracker.test_forms.ContactFormValidationTests.test_stage_outside_the_pipeline_is_rejected) ... ok
+test_whitespace_only_name_is_rejected (tracker.test_forms.ContactFormValidationTests.test_whitespace_only_name_is_rejected) ... ok
+test_contact_is_shown_by_its_name (tracker.test_models.ContactModelTests.test_contact_is_shown_by_its_name) ... ok
+test_creation_time_is_recorded_automatically (tracker.test_models.ContactModelTests.test_creation_time_is_recorded_automatically) ... ok
+test_new_contact_starts_in_the_lead_stage (tracker.test_models.ContactModelTests.test_new_contact_starts_in_the_lead_stage) ... ok
+test_stage_is_displayed_with_its_human_readable_label (tracker.test_models.ContactModelTests.test_stage_is_displayed_with_its_human_readable_label) ... ok
+test_contacts_come_back_newest_first (tracker.test_models.ContactOrderingTests.test_contacts_come_back_newest_first) ... ok
+test_add_contact_persists_and_appears_in_list (tracker.tests.WalkingSkeletonTests.test_add_contact_persists_and_appears_in_list) ... ok
+test_invalid_contact_is_rejected (tracker.tests.WalkingSkeletonTests.test_invalid_contact_is_rejected) ... ok
+test_list_page_loads_empty (tracker.tests.WalkingSkeletonTests.test_list_page_loads_empty) ... ok
+test_invalid_submission_shows_errors_and_saves_nothing (tracker.test_acceptance.AddContactAcceptanceTests.test_invalid_submission_shows_errors_and_saves_nothing) ... ok
+test_newest_contact_appears_at_the_top_of_the_list (tracker.test_acceptance.AddContactAcceptanceTests.test_newest_contact_appears_at_the_top_of_the_list) ... ok
+test_post_without_csrf_token_is_rejected (tracker.test_acceptance.AddContactAcceptanceTests.test_post_without_csrf_token_is_rejected) ... ok
+test_user_adds_contact_and_sees_it_in_the_list (tracker.test_acceptance.AddContactAcceptanceTests.test_user_adds_contact_and_sees_it_in_the_list) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.899s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...

@@ -1,0 +1,15 @@
+[run]
+source =
+    tracker
+    ventureCRM
+omit =
+    */migrations/*
+    tracker/tests.py
+    tracker/test_*.py
+    ventureCRM/asgi.py
+    ventureCRM/wsgi.py
+branch = True
+
+[report]
+show_missing = True
+skip_empty = True

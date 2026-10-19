@@ -1,0 +1,29 @@
+$ coverage run manage.py test tracker.tests --verbosity 2   # M5 walking-skeleton tests only, WITH the fault injected
+Found 3 test(s).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+System check identified no issues (0 silenced).
+test_add_contact_persists_and_appears_in_list (tracker.tests.WalkingSkeletonTests.test_add_contact_persists_and_appears_in_list) ... ok
+test_invalid_contact_is_rejected (tracker.tests.WalkingSkeletonTests.test_invalid_contact_is_rejected) ... ok
+test_list_page_loads_empty (tracker.tests.WalkingSkeletonTests.test_list_page_loads_empty) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.122s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+$ coverage report
+Name                     Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------
+tracker/admin.py             5      0      0      0   100%
+tracker/apps.py              3      0      0      0   100%
+tracker/forms.py             6      0      0      0   100%
+tracker/models.py           17      1      0      0    94%   24
+tracker/urls.py              3      0      0      0   100%
+tracker/views.py            12      0      4      0   100%
+ventureCRM/settings.py      18      0      0      0   100%
+ventureCRM/urls.py           3      0      0      0   100%
+--------------------------------------------------------------------
+TOTAL                       67      1      4      0    99%
+
+2 empty files skipped.

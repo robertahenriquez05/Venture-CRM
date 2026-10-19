@@ -1,0 +1,15 @@
+$ coverage report
+Name                     Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------
+tracker/admin.py             5      0      0      0   100%
+tracker/apps.py              3      0      0      0   100%
+tracker/forms.py             6      0      0      0   100%
+tracker/models.py           17      0      0      0   100%
+tracker/urls.py              3      0      0      0   100%
+tracker/views.py            12      0      4      0   100%
+ventureCRM/settings.py      18      0      0      0   100%
+ventureCRM/urls.py           3      0      0      0   100%
+--------------------------------------------------------------------
+TOTAL                       67      0      4      0   100%
+
+2 empty files skipped.
