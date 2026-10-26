@@ -1,0 +1,56 @@
+diff --git a/tracker/views.py b/tracker/views.py
+index 7db8e1b..c9a91db 100644
+--- a/tracker/views.py
++++ b/tracker/views.py
+@@ -3,16 +3,41 @@ from django.shortcuts import redirect, render
+ from .forms import ContactForm
+ from .models import Contact
+ 
++CONTACT_PAGE_TEMPLATE = "tracker/contact_list.html"
++
+ 
+ def contact_list(request):
+-    """Walking skeleton: browser -> URL router -> view -> form -> ORM -> SQLite -> template -> browser."""
++    """Entry point for "/". Only decides which job the request is asking for.
++
++    POST means "add a contact"; any other request means "show the page".
++    """
+     if request.method == "POST":
+-        form = ContactForm(request.POST)
+-        if form.is_valid():
+-            form.save()
+-            return redirect("contact_list")
+-    else:
+-        form = ContactForm()
+-
+-    contacts = Contact.objects.all()
+-    return render(request, "tracker/contact_list.html", {"form": form, "contacts": contacts})
++        return add_contact(request)
++    return show_contact_page(request, ContactForm())
++
++
++def add_contact(request):
++    """Validate and save one contact.
++
++    Valid: save it and redirect back to the list (Post/Redirect/Get).
++    Invalid: re-show the page with the user's input and the form's errors.
++    """
++    form = ContactForm(request.POST)
++    if not form.is_valid():
++        return show_contact_page(request, form)
++    form.save()
++    return redirect("contact_list")
++
++
++def show_contact_page(request, form):
++    """Render the contact list page around whichever form it is given (blank or with errors)."""
++    return render(request, CONTACT_PAGE_TEMPLATE, {"form": form, "contacts": contacts_for_list()})
++
++
++def contacts_for_list():
++    """The single place that decides which contacts the list page shows.
++
++    Order comes from Contact.Meta.ordering (newest first, pinned by the M6 ordering tests).
++    Future search (US-7) and category filters (US-6) belong here, not in the request handling.
++    """
++    return Contact.objects.all()

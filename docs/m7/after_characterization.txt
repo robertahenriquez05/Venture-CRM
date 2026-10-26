@@ -1,0 +1,10 @@
+GET  / (empty list)                      status=200  location=-    contacts_in_db=0  body_sha256=d0eb08c9f847d514
+HEAD /                                   status=200  location=-    contacts_in_db=0  body_sha256=(empty)
+POST / valid contact                     status=302  location=/    contacts_in_db=1  body_sha256=(empty)
+GET  / (one contact)                     status=200  location=-    contacts_in_db=1  body_sha256=2233676dc4696fa7
+POST / invalid (blank name, bad email)   status=200  location=-    contacts_in_db=1  body_sha256=fb90b90e0b93f140
+POST / invalid (unknown stage)           status=200  location=-    contacts_in_db=1  body_sha256=9fe638873f3978e8
+POST / second valid contact              status=302  location=/    contacts_in_db=2  body_sha256=(empty)
+GET  / (two contacts)                    status=200  location=-    contacts_in_db=2  body_sha256=9233e7e4be9d64cf
+PUT  /                                   status=200  location=-    contacts_in_db=2  body_sha256=9233e7e4be9d64cf
+DELETE /                                 status=200  location=-    contacts_in_db=2  body_sha256=9233e7e4be9d64cf
