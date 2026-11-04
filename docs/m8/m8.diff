@@ -1,0 +1,786 @@
+diff --git a/.gitignore b/.gitignore
+index 83972fa..a47273e 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -216,3 +216,6 @@ __marimo__/
+ 
+ # Streamlit
+ .streamlit/secrets.toml
++
++# Venture CRM structured logs (IAP M8)
++logs/
+diff --git a/PROMPT_LOG.md b/PROMPT_LOG.md
+index 43f35d6..d512fe1 100644
+--- a/PROMPT_LOG.md
++++ b/PROMPT_LOG.md
+@@ -110,3 +110,28 @@ erDiagram with entities, attributes, and cardinalities."
+ - Chose this smell over moving the template's inline CSS into a base template. The view problem affects correctness when the next features (search, filters, detail page) are added; the CSS one is only tidiness.
+ 
+ **Verification:** before the refactor, 23/23 passed at 100% statements and branches. After, the same 23/23 passed at 100%. The SHA-256 hashes of all four test files are identical in both runs, and the characterization output is byte-for-byte identical. `manage.py check` is clean.
++
++## IAP M8 - Structured Logging and Runbook Entry (2026-11-04)
++
++**Tool:** Claude (claude.ai session with a cloud workspace and push access to this repo)
++
++**Prompt:** Pasted the full IAP M8 assignment text ("Add structured logging to your app... Include whatever correlating identifier makes sense... Write one runbook entry for a failure your app could plausibly have... for someone who is not you, at an hour when you are not available") plus the rubric, and asked Claude to help me do it for my individual Venture CRM project and get it submitted.
++
++**What the AI did:**
++- Read the app and the M5-M7 history, ran the existing suite first (23 tests OK, 100% coverage).
++- Added `tracker/observability.py`: a JSON formatter with a fixed leading field order (`ts, level, logger, event, request_id`), a `log_event()` helper, and `RequestLoggingMiddleware`, which creates a per-request `request_id`, stores it in a context variable, logs `request.start`/`request.end`, and returns it in `X-Request-ID`.
++- Added `contact.list.loaded`, `contact.created`, `contact.create.rejected`, `contact.create.failed` events to `tracker/views.py`, plus a custom 500 page that shows the request_id as a reference code.
++- Configured `LOGGING` in settings: Django's own loggers go through the same JSON formatter, logs go to the terminal and `logs/venture-crm.jsonl`, and runserver's duplicate access line is dropped.
++- Reproduced three real failures on a running server (read-only database, database locked by another program, missing tables), wrote the runbook from what the logs actually showed, and ran every runbook command against those failures.
++- Wrote `scripts/logq.py` so the runbook works without grep/jq (Windows too), and 11 new tests in `tracker/test_logging.py`.
++
++**Diff:** `docs/m8/m8.diff`. App code: `tracker/views.py`, `ventureCRM/settings.py`, `ventureCRM/urls.py`, `.gitignore`, and new `tracker/observability.py`. No existing test file changed.
++
++**What I changed / decided:**
++- **Correlating ID = per-request ID**, not a per-contact or session ID: in this app one user action is one HTTP request (no queue, no background jobs), so the request is the unit of work to trace.
++- **No contact data in logs** (names, emails, companies). Only IDs, field names and counts, because I plan to use this app with real contacts after the course. A test enforces this.
++- **Picked "Add contact shows an error page"** as the runbook failure, because it is the one thing a user would actually report. I made sure it starts from that symptom and branches to causes, rather than starting from "SQLite is locked".
++- Kept `DEBUG` on by default so my day-to-day workflow does not change; `DJANGO_DEBUG=False` shows the real user-facing error page.
++- Excluded the log-file branch in settings from coverage (`pragma: no cover`), because tests never write the log file on purpose; it was verified by hand (`sample_logs.jsonl` was written by it).
++
++**Verification:** 34/34 tests pass (23 unchanged + 11 new) at 100% statement and branch coverage; `manage.py check` and `makemigrations --check` are clean. `docs/m8/sample_logs.jsonl` was produced by a real `runserver` process; grep confirms no submitted contact values appear in it.
+diff --git a/README.md b/README.md
+index 395b8a9..b869c06 100644
+--- a/README.md
++++ b/README.md
+@@ -1,2 +1,10 @@
+ # Venture-CRM
+ Venture-CRM is a lightweight web app for tracking early-stage founder relationships; advisors, mentors, and investor contacts, along with where each relationship stands and what follow-up is needed next. Built for solo founders who don't need a full-scale CRM, just a simple way to keep track of who they've talked to and what's pending. Built with Python and Django.
++
++## Logging and runbooks
++
++The app writes structured JSON logs (one object per line) to the terminal and to `logs/venture-crm.jsonl`. Every request gets a `request_id` that appears on all of its log lines, in the `X-Request-ID` response header, and as the "Reference code" on the error page.
++
++- Read the log: `python scripts/logq.py --failed`, `python scripts/logq.py <request_id>`, `python scripts/logq.py --last 20`
++- Field reference and a traced example: [`docs/m8/README.md`](docs/m8/README.md)
++- Runbooks: [`RB-001: "Add contact" shows an error page`](docs/runbooks/RB-001-add-contact-error-page.md)
+diff --git a/docs/runbooks/RB-001-add-contact-error-page.md b/docs/runbooks/RB-001-add-contact-error-page.md
+new file mode 100644
+index 0000000..0a1abb6
+--- /dev/null
++++ b/docs/runbooks/RB-001-add-contact-error-page.md
+@@ -0,0 +1,159 @@
++# RB-001: "Add contact" shows an error page and the contact is not saved
++
++| | |
++|---|---|
++| **Applies to** | Venture CRM (Django + SQLite), running with `python manage.py runserver` |
++| **Who this is for** | Anyone keeping the app running who did not write it. You need a terminal and the project folder (the one that contains `manage.py`). No Django knowledge needed. |
++| **Time to fix** | Usually under 15 minutes |
++| **Owner** | Roberta Henriquez (roberta.henriquez04@gmail.com). You should not need her to finish this. |
++| **Last tested** | 2026-11-04. Every failure below was reproduced on purpose and every command was run. |
++
++> **Two rules before you start**
++> 1. **Never delete, rename or replace `db.sqlite3`.** It holds every contact, and it is *not* in Git, so there is no copy to get back from GitHub.
++> 2. Do not run `manage.py migrate` until Step 3 tells you to. On the wrong file it builds empty tables, and it will look like every contact has been lost.
++
++---
++
++## 1. What you will see (the symptom)
++
++A user reports one of these after filling in the form and clicking **Add contact**:
++
++- A plain page saying **"Something went wrong"** with a **Reference code** such as `105e4d00498343b4`. *(This is the normal error page.)*
++- A yellow Django page whose title starts with **`OperationalError at /`**. *(The app is running in debug mode, the default for this course project.)*
++- Either of the above after the page **hangs for about 5 seconds**.
++
++In every case the new contact is **not** in the list. Nothing was half-saved.
++
++In the terminal running the server, or in the log file, you will see lines with `"level": "ERROR"` and `"status": 500`.
++
++## 2. Find the failed request in the log
++
++The log is one JSON object per line. It is written to the terminal running the server **and** to `logs/venture-crm.jsonl` inside the project folder. Older lines rotate into `venture-crm.jsonl.1` ... `.5`.
++
++Open a **second** terminal (leave the server running), `cd` into the project folder, and run:
++
++```
++python scripts/logq.py --failed
++```
++
++You get one line per failed request, newest last. Example:
++
++```
++2026-11-04T20:35:42.004Z  ERROR   request.end   rid=578031ba4bd44e64  method="POST"  path="/"  status=500  duration_ms=5017.3
++```
++
++`rid` is the **request_id**. It is the same value as the user's **Reference code**. If the user gave you a code, use it. If not, pick the failed request whose time matches their report (times are **UTC**; US Central is UTC − 6 hours in winter, − 5 in summer).
++
++Now show everything that request did:
++
++```
++python scripts/logq.py 578031ba4bd44e64
++```
++
++## 3. Confirm which failure it is
++
++Read the `error=` value in the output from Step 2. It appears on the `contact.create.failed` line, on the `django.request` line, or on both. Find the matching row:
++
++| `error=` says | Does the contact list page (`http://127.0.0.1:8000/`) still load? | Go to |
++|---|---|---|
++| `attempt to write a readonly database` | **Yes.** Only saving fails, and it fails instantly. | **3A** |
++| `database is locked` (and `db_ms` is about `5000`) | **Yes**, but saving hangs about 5 s, then fails | **3B** |
++| `no such table: tracker_contact` | **No.** The list page fails too. | **3C** |
++| anything else | | **Section 5 (escalate)** |
++
++<details><summary>What the full trace looks like (case 3A)</summary>
++
++```
++2026-11-04T20:35:01.694Z  INFO    request.start            rid=105e4d00498343b4  method="POST"  path="/"
++2026-11-04T20:35:01.709Z  ERROR   contact.create.failed    rid=105e4d00498343b4  error_type="OperationalError"  error="attempt to write a readonly database"  db_ms=0.7
++2026-11-04T20:35:01.710Z  ERROR   django.request           rid=105e4d00498343b4  msg="Internal Server Error: /"  error_type="OperationalError"  error="attempt to write a readonly database"  stack="... django.db.utils.OperationalError: attempt to write a readonly database"
++2026-11-04T20:35:01.718Z  ERROR   request.end              rid=105e4d00498343b4  method="POST"  path="/"  status=500  duration_ms=23.8
++```
++</details>
++
++**Before any fix, make a backup copy** (it copies, it does not move). For **3B**, wait until after the lock is released.
++
++| macOS / Linux | Windows (PowerShell) |
++|---|---|
++| `cp db.sqlite3 "db.sqlite3.bak-$(date +%Y%m%d-%H%M)"` | `Copy-Item db.sqlite3 "db.sqlite3.bak-$(Get-Date -Format yyyyMMdd-HHmm)"` |
++
++### 3A. "attempt to write a readonly database"
++
++**Meaning:** the app can read the database file but is not allowed to change it. SQLite also needs to write a temporary journal file *next to* `db.sqlite3`, so a read-only **folder** causes the same error. Common triggers: the file was copied or restored from somewhere else, it was created by a different user (for example a command once run with `sudo`), or a sync tool (OneDrive, iCloud, Dropbox) has marked it read-only.
++
++**Confirm:**
++
++| macOS / Linux | Windows (PowerShell) |
++|---|---|
++| `ls -l db.sqlite3` then `ls -ld .` | `attrib db.sqlite3` |
++| Look for a missing `w` in the first block (e.g. `-r--r--r--`), or an owner that is not you. | An `R` in the output means read-only. |
++
++**Fix:**
++
++| macOS / Linux | Windows (PowerShell) |
++|---|---|
++| `chmod u+w db.sqlite3` and `chmod u+w .` | `attrib -R db.sqlite3` |
++| If the owner is not you: `sudo chown "$USER" db.sqlite3` | If the folder is inside OneDrive: right-click the project folder, choose **Always keep on this device**, and wait for sync to finish. |
++
++Do **not** use `chmod 777`. You do not need to restart the server. Go to **Section 4**.
++
++### 3B. "database is locked"
++
++**Meaning:** another program has started changing the database and has not finished, so the app waits 5 seconds for it and then gives up. Reading still works, which is why the list page loads. The usual cause is **DB Browser for SQLite** (or a similar viewer) with **unsaved edits**. Other causes: a `python manage.py shell` or `dbshell` session left open, or a **second** copy of the server running on the same folder.
++
++**Confirm:**
++
++| macOS / Linux | Windows |
++|---|---|
++| `lsof db.sqlite3` lists every program that has the file open. Any program other than the one server (`python ... runserver`) is the suspect. | Open **Resource Monitor** (search for `resmon`), go to the **CPU** tab, and type `db.sqlite3` into **Associated Handles**. |
++
++**Fix (in this order):**
++1. **DB Browser for SQLite** (or similar): click **Write Changes** if you made those edits on purpose. If you don't know who made them, click **Revert Changes** (this only throws away the viewer's unsaved edits, not the app's data). Then close it.
++2. Close any open `manage.py shell` / `dbshell` window by typing `exit()` or pressing Ctrl+D (Ctrl+Z then Enter on Windows).
++3. If two servers are running, stop the extra one with Ctrl+C in its terminal.
++
++Do **not** force-quit (kill) the program holding the lock unless steps 1-3 are impossible. Go to **Section 4**.
++
++### 3C. "no such table: tracker_contact"
++
++**Meaning:** the app opened a database file that has no contact table. The whole site is down, not just saving. Usually `db.sqlite3` was deleted, moved, or replaced, and SQLite silently created a new **empty** file with the same name. Or this is a fresh copy of the project where setup was never run.
++
++**Confirm:**
++
++```
++python manage.py showmigrations tracker
++```
++
++`[ ] 0001_initial` (empty box) means the table was never created in this file. Also check the size of `db.sqlite3` (`ls -l db.sqlite3` or `dir db.sqlite3`). **0 bytes** means it is a brand-new empty file.
++
++**Fix:**
++- **If contacts were stored here before:** the real database is somewhere else. Stop the server (Ctrl+C), then look for it: a `db.sqlite3.bak-*` copy, the Recycle Bin or Trash, or another copy of the project folder. Copy it back to `db.sqlite3`, start the server again, and **do not run migrate**. If you cannot find it, **stop here and escalate** (Section 5).
++- **If this really is a new install with no contacts yet:** run `python manage.py migrate`. Then go to Section 4.
++
++## 4. Check that it is fixed
++
++1. Open `http://127.0.0.1:8000/` and add a contact named **Runbook Check** (any stage). It should appear at the top of the list.
++2. Confirm the log shows success: run `python scripts/logq.py --last 6` and look for `contact.created` followed by `request.end` with `status=302`.
++3. Remove the test contact:
++   ```
++   python manage.py shell -c "from tracker.models import Contact; print(Contact.objects.filter(name='Runbook Check').delete())"
++   ```
++4. **Tell the user** that the contacts they tried to add while it was broken were **not saved** and need to be entered again.
++
++## 5. Escalate if
++
++- the error is not one of the three in Step 3,
++- the fix did not work (Section 4, step 1 still fails), or
++- you could not find the real database in 3C.
++
++Leave the server and the files exactly as they are. Save the evidence to a file:
++
++```
++python scripts/logq.py --last 50 > incident-evidence.txt
++```
++
++Email `incident-evidence.txt` to the owner (top of this page), with the user's reference code and roughly what time it happened. In the meantime, tell users that adding contacts is unavailable. Nothing they already saved is lost.
++
++---
++
++*Background for the curious (you don't need this to fix it):* every log line has the same first five fields: `ts`, `level`, `logger`, `event`, `request_id`. Each request gets one `request_id`. It is attached to every line written while handling that request, returned in the `X-Request-ID` response header, and shown to users as the reference code. See `tracker/observability.py`.
+diff --git a/scripts/logq.py b/scripts/logq.py
+new file mode 100644
+index 0000000..abe818f
+--- /dev/null
++++ b/scripts/logq.py
+@@ -0,0 +1,73 @@
++"""Read Venture CRM's JSON log without needing grep or jq (works the same on Windows, macOS and Linux).
++
++Run from the project folder (the one with manage.py):
++
++    python scripts/logq.py --failed            # the last 10 requests that ended in a 5xx error
++    python scripts/logq.py 105e4d00498343b4    # every line for one request_id (a user's "Reference code")
++    python scripts/logq.py --last 20           # the last 20 log lines, any kind
++
++It reads logs/venture-crm.jsonl plus its rotated copies (.1 ... .5), oldest first.
++Set VENTURE_CRM_LOG_DIR to read a different folder.
++"""
++
++import argparse
++import json
++import os
++import sys
++from pathlib import Path
++
++LOG_DIR = Path(os.environ.get("VENTURE_CRM_LOG_DIR", Path(__file__).resolve().parent.parent / "logs"))
++LEADING = ("ts", "level", "logger", "event", "request_id")
++
++
++def log_files():
++    rotated = sorted(LOG_DIR.glob("venture-crm.jsonl.*"), key=lambda p: int(p.suffix[1:]), reverse=True)
++    current = LOG_DIR / "venture-crm.jsonl"
++    return rotated + ([current] if current.exists() else [])
++
++
++def read_lines():
++    for path in log_files():
++        with path.open(encoding="utf-8") as fh:
++            for raw in fh:
++                raw = raw.strip()
++                if raw:
++                    yield json.loads(raw)
++
++
++def show(line):
++    extra = {k: v for k, v in line.items() if k not in LEADING}
++    if "stack" in extra:  # keep the last line of the traceback, which names the error
++        extra["stack"] = "... " + extra["stack"].strip().splitlines()[-1]
++    details = "  ".join(f"{k}={json.dumps(v)}" for k, v in extra.items())
++    print(f"{line['ts']}  {line['level']:<7} {line['event']:<24} rid={line['request_id']}  {details}")
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    parser.add_argument("request_id", nargs="?", help="show every line for this request_id / reference code")
++    parser.add_argument("--failed", action="store_true", help="list recent requests that ended with a 5xx status")
++    parser.add_argument("--last", type=int, default=10, help="how many lines/requests to show (default 10)")
++    args = parser.parse_args()
++
++    if not log_files():
++        sys.exit(f"No log files found in {LOG_DIR}. Is the server running from this folder?")
++
++    lines = list(read_lines())
++    if args.request_id:
++        matches = [line for line in lines if line["request_id"] == args.request_id]
++        if not matches:
++            sys.exit(f"No lines with request_id {args.request_id} in {LOG_DIR}.")
++        selected = matches
++    elif args.failed:
++        selected = [l for l in lines if l["event"] == "request.end" and l.get("status", 0) >= 500][-args.last :]
++        if not selected:
++            print("No failed (5xx) requests in the log.")
++    else:
++        selected = lines[-args.last :]
++    for line in selected:
++        show(line)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tracker/observability.py b/tracker/observability.py
+new file mode 100644
+index 0000000..e2328b0
+--- /dev/null
++++ b/tracker/observability.py
+@@ -0,0 +1,130 @@
++"""Structured logging for Venture CRM (IAP M8).
++
++Every log line the app writes is one JSON object on one line ("JSON Lines").
++Every line has the same first five fields, in the same order:
++
++    ts          UTC timestamp, ISO 8601 with milliseconds, e.g. 2026-11-04T20:31:07.412Z
++    level       INFO / WARNING / ERROR
++    logger      which part of the code wrote it, e.g. tracker.request
++    event       a stable, dot-separated name, e.g. contact.created
++    request_id  the correlation ID of the HTTP request the line belongs to
++                (null for lines written outside a request, e.g. at startup)
++
++After those come the fields that belong to that event (status, duration_ms,
++contact_id, ...). Lines that Django itself writes (logger "django.*") get the
++same five fields, with the original text in "msg".
++
++Correlation: RequestLoggingMiddleware gives each request a request_id, keeps it
++in a context variable for the life of the request (so any log line written
++while handling that request carries it automatically), and returns it to the
++caller in the X-Request-ID response header.
++
++Privacy: contact names, emails and companies are never logged. Events carry
++IDs, field names and counts only, because this app will hold real contact
++data after the course.
++"""
++
++import contextvars
++import json
++import logging
++import re
++import time
++import uuid
++from datetime import datetime, timezone
++
++REQUEST_ID_HEADER = "X-Request-ID"
++
++# An incoming X-Request-ID is reused only if it looks like an ID, so a caller
++# cannot inject newlines or huge values into the log.
++_VALID_INCOMING_ID = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
++
++_request_id = contextvars.ContextVar("request_id", default=None)
++
++log = logging.getLogger("tracker.request")
++
++
++def current_request_id():
++    """The request_id of the request being handled on this thread, or None."""
++    return _request_id.get()
++
++
++def log_event(logger, level, event, **fields):
++    """Write one structured event. `event` is the stable name; `fields` are its data."""
++    logger.log(level, event, extra={"event_fields": fields})
++
++
++class JsonFormatter(logging.Formatter):
++    """Formats every log record as a single-line JSON object with a fixed field order."""
++
++    def format(self, record):
++        fields = getattr(record, "event_fields", None)
++        entry = {
++            "ts": datetime.fromtimestamp(record.created, timezone.utc)
++            .isoformat(timespec="milliseconds")
++            .replace("+00:00", "Z"),
++            "level": record.levelname,
++            "logger": record.name,
++            # App events name themselves; a line from Django is named after its logger.
++            "event": record.getMessage() if fields is not None else record.name,
++            "request_id": _request_id.get() or _request_id_from_record(record),
++        }
++        if fields is not None:
++            entry.update(fields)
++        else:
++            entry["msg"] = record.getMessage()
++        if record.exc_info:
++            exc_type, exc_value, _ = record.exc_info
++            entry["error_type"] = exc_type.__name__
++            entry["error"] = str(exc_value)
++            entry["stack"] = self.formatException(record.exc_info)
++        return json.dumps(entry, default=str, ensure_ascii=False)
++
++
++def _request_id_from_record(record):
++    """Django logs some lines (e.g. "Not Found") after our middleware has finished.
++
++    Those records carry the request object, which still has the request_id we gave it.
++    """
++    return getattr(getattr(record, "request", None), "request_id", None)
++
++
++def _level_for_status(status):
++    if status >= 500:
++        return logging.ERROR
++    if status >= 400:
++        return logging.WARNING
++    return logging.INFO
++
++
++class RequestLoggingMiddleware:
++    """Assigns the request_id and writes request.start / request.end for every request.
++
++    Listed first in MIDDLEWARE so it wraps everything else, including Django's
++    500 handling: a crashed request still gets a request.end line with status 500.
++    """
++
++    def __init__(self, get_response):
++        self.get_response = get_response
++
++    def __call__(self, request):
++        incoming = request.headers.get(REQUEST_ID_HEADER, "")
++        request_id = incoming if _VALID_INCOMING_ID.match(incoming) else uuid.uuid4().hex[:16]
++        token = _request_id.set(request_id)
++        request.request_id = request_id
++        started = time.perf_counter()
++        try:
++            log_event(log, logging.INFO, "request.start", method=request.method, path=request.path)
++            response = self.get_response(request)
++            response[REQUEST_ID_HEADER] = request_id
++            log_event(
++                log,
++                _level_for_status(response.status_code),
++                "request.end",
++                method=request.method,
++                path=request.path,
++                status=response.status_code,
++                duration_ms=round((time.perf_counter() - started) * 1000, 1),
++            )
++            return response
++        finally:
++            _request_id.reset(token)
+diff --git a/tracker/test_logging.py b/tracker/test_logging.py
+new file mode 100644
+index 0000000..4062a49
+--- /dev/null
++++ b/tracker/test_logging.py
+@@ -0,0 +1,162 @@
++"""IAP M8 tests: the log is structured, consistently fielded, and traceable by request_id.
++
++The tests attach their own handler (using the app's real JsonFormatter) and parse
++every line it writes, so they check the exact text an operator would read.
++"""
++
++import io
++import json
++import logging
++import re
++from contextlib import contextmanager
++from unittest import mock
++
++from django.db import OperationalError
++from django.test import RequestFactory, TestCase
++from django.urls import reverse
++
++from . import views
++from .forms import ContactForm
++from .models import Contact
++from .observability import REQUEST_ID_HEADER, JsonFormatter
++
++LEADING_FIELDS = ["ts", "level", "logger", "event", "request_id"]
++TS_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
++
++
++@contextmanager
++def captured_log():
++    """Capture everything the app and Django log, formatted exactly as in production."""
++    stream = io.StringIO()
++    handler = logging.StreamHandler(stream)
++    handler.setFormatter(JsonFormatter())
++    handler.setLevel(logging.INFO)
++    loggers = [logging.getLogger("tracker"), logging.getLogger("django")]
++    for logger in loggers:
++        logger.addHandler(handler)
++    captured = {"raw": stream}
++    try:
++        yield captured
++    finally:
++        for logger in loggers:
++            logger.removeHandler(handler)
++        captured["text"] = stream.getvalue()
++        captured["lines"] = [json.loads(line) for line in captured["text"].splitlines()]
++
++
++def events_for(lines, request_id):
++    return [line["event"] for line in lines if line["request_id"] == request_id]
++
++
++VALID_CONTACT = {"name": "Secret Person", "email": "secret@example.com", "company": "Hidden Co", "stage": "meeting"}
++
++
++class StructuredLogFormatTests(TestCase):
++    def test_every_line_is_json_with_the_same_leading_fields(self):
++        with captured_log() as log:
++            self.client.get(reverse("contact_list"))
++            self.client.post(reverse("contact_list"), VALID_CONTACT)
++            self.client.post(reverse("contact_list"), {"name": "", "stage": "lead"})
++            self.client.get("/no-such-page/")
++        self.assertGreaterEqual(len(log["lines"]), 10)
++        for line in log["lines"]:
++            self.assertEqual(list(line)[:5], LEADING_FIELDS, line)
++            self.assertRegex(line["ts"], TS_FORMAT)
++            self.assertIn(line["level"], {"INFO", "WARNING", "ERROR"})
++            self.assertIsNotNone(line["request_id"], line)
++
++    def test_line_written_outside_a_request_has_null_request_id(self):
++        record = logging.LogRecord("tracker.test", logging.INFO, __file__, 1, "startup", None, None)
++        line = json.loads(JsonFormatter().format(record))
++        self.assertEqual(list(line)[:5], LEADING_FIELDS)
++        self.assertIsNone(line["request_id"])
++        self.assertEqual(line["event"], "tracker.test")  # not an app event, so named after its logger
++        self.assertEqual(line["msg"], "startup")
++
++
++class RequestTracingTests(TestCase):
++    def test_one_add_contact_is_traceable_from_start_to_end(self):
++        with captured_log() as log:
++            response = self.client.post(reverse("contact_list"), VALID_CONTACT)
++        request_id = response[REQUEST_ID_HEADER]
++        self.assertEqual(events_for(log["lines"], request_id), ["request.start", "contact.created", "request.end"])
++        created = next(line for line in log["lines"] if line["event"] == "contact.created")
++        self.assertEqual(created["contact_id"], Contact.objects.get().pk)
++        self.assertEqual(created["stage"], "meeting")
++        end = log["lines"][-1]
++        self.assertEqual((end["event"], end["status"], end["method"]), ("request.end", 302, "POST"))
++
++    def test_each_request_gets_its_own_id(self):
++        first = self.client.get(reverse("contact_list"))[REQUEST_ID_HEADER]
++        second = self.client.get(reverse("contact_list"))[REQUEST_ID_HEADER]
++        self.assertRegex(first, r"^[0-9a-f]{16}$")
++        self.assertNotEqual(first, second)
++
++    def test_valid_incoming_request_id_is_reused(self):
++        with captured_log() as log:
++            response = self.client.get(reverse("contact_list"), headers={REQUEST_ID_HEADER: "upstream-abc-123"})
++        self.assertEqual(response[REQUEST_ID_HEADER], "upstream-abc-123")
++        self.assertEqual(
++            events_for(log["lines"], "upstream-abc-123"), ["request.start", "contact.list.loaded", "request.end"]
++        )
++
++    def test_malformed_incoming_request_id_is_replaced(self):
++        response = self.client.get(reverse("contact_list"), headers={REQUEST_ID_HEADER: "bad id; drop table"})
++        self.assertRegex(response[REQUEST_ID_HEADER], r"^[0-9a-f]{16}$")
++
++    def test_django_lines_written_after_the_middleware_keep_the_request_id(self):
++        with captured_log() as log:
++            response = self.client.get("/no-such-page/")
++        request_id = response[REQUEST_ID_HEADER]
++        self.assertEqual(events_for(log["lines"], request_id), ["request.start", "request.end", "django.request"])
++        self.assertEqual(log["lines"][1]["level"], "WARNING")
++
++
++class ContactEventPrivacyTests(TestCase):
++    def test_rejected_contact_logs_field_names_not_values(self):
++        with captured_log() as log:
++            self.client.post(reverse("contact_list"), {"name": "", "email": "leak-check@not-valid", "stage": "lead"})
++        rejected = next(line for line in log["lines"] if line["event"] == "contact.create.rejected")
++        self.assertEqual(rejected["invalid_fields"], ["email", "name"])
++        self.assertNotIn("leak-check", log["text"])
++
++    def test_saved_contact_details_are_not_logged(self):
++        with captured_log() as log:
++            self.client.post(reverse("contact_list"), VALID_CONTACT)
++        for value in ("Secret Person", "secret@example.com", "Hidden Co"):
++            self.assertNotIn(value, log["text"])
++
++
++class DatabaseFailureTests(TestCase):
++    """The failure in docs/runbooks/RB-001: the list loads, but saving a contact gives a 500."""
++
++    def test_failed_save_is_logged_with_cause_and_traceable_to_the_users_reference_code(self):
++        self.client.raise_request_exception = False
++        failure = OperationalError("attempt to write a readonly database")
++        with mock.patch.object(ContactForm, "save", side_effect=failure), captured_log() as log:
++            response = self.client.post(reverse("contact_list"), VALID_CONTACT)
++
++        self.assertEqual(response.status_code, 500)
++        request_id = response[REQUEST_ID_HEADER]
++        # The user's error page shows the same ID the operator searches the log for.
++        self.assertContains(response, f"Reference code: <code>{request_id}</code>", status_code=500)
++        self.assertContains(response, "it was not saved", status_code=500)
++        self.assertEqual(Contact.objects.count(), 0)
++
++        self.assertEqual(
++            events_for(log["lines"], request_id),
++            ["request.start", "contact.create.failed", "django.request", "request.end"],
++        )
++        failed = next(line for line in log["lines"] if line["event"] == "contact.create.failed")
++        self.assertEqual(failed["level"], "ERROR")
++        self.assertEqual(failed["error_type"], "OperationalError")
++        self.assertEqual(failed["error"], "attempt to write a readonly database")
++        self.assertIn("db_ms", failed)
++        crash = next(line for line in log["lines"] if line["event"] == "django.request")
++        self.assertIn("Traceback", crash["stack"])
++        self.assertEqual(log["lines"][-1]["status"], 500)
++
++    def test_error_page_without_a_request_id_still_renders(self):
++        response = views.server_error(RequestFactory().get("/"))
++        self.assertEqual(response.status_code, 500)
++        self.assertIn(b"Reference code: <code>unavailable</code>", response.content)
+diff --git a/tracker/views.py b/tracker/views.py
+index df6fc90..699ef9c 100644
+--- a/tracker/views.py
++++ b/tracker/views.py
+@@ -1,10 +1,19 @@
++import logging
++import time
++
++from django.db import DatabaseError
++from django.http import HttpResponseServerError
+ from django.shortcuts import redirect, render
++from django.utils.html import escape
+ 
+ from .forms import ContactForm
+ from .models import Contact
++from .observability import current_request_id, log_event
+ 
+ CONTACT_PAGE_TEMPLATE = "tracker/contact_list.html"
+ 
++log = logging.getLogger("tracker.contacts")
++
+ 
+ def contact_list(request):
+     """Entry point for "/". Only decides which job the request is asking for.
+@@ -24,14 +33,34 @@ def add_contact(request):
+     """
+     form = ContactForm(request.POST)
+     if not form.is_valid():
++        # Field names only, never the submitted values (they are contact data).
++        log_event(log, logging.INFO, "contact.create.rejected", invalid_fields=sorted(form.errors))
+         return show_contact_page(request, form)
+-    form.save()
++    started = time.perf_counter()
++    try:
++        contact = form.save()
++    except DatabaseError as exc:
++        log_event(
++            log,
++            logging.ERROR,
++            "contact.create.failed",
++            error_type=type(exc).__name__,
++            error=str(exc),
++            db_ms=_ms_since(started),
++        )
++        raise  # Django turns this into a 500 and logs the stack trace (django.request).
++    log_event(
++        log, logging.INFO, "contact.created", contact_id=contact.pk, stage=contact.stage, db_ms=_ms_since(started)
++    )
+     return redirect("contact_list")
+ 
+ 
+ def show_contact_page(request, form):
+     """Render the contact list page around whichever form it is given (blank or with errors)."""
+-    return render(request, CONTACT_PAGE_TEMPLATE, {"form": form, "contacts": contacts_for_list()})
++    started = time.perf_counter()
++    contacts = list(contacts_for_list())
++    log_event(log, logging.INFO, "contact.list.loaded", contact_count=len(contacts), db_ms=_ms_since(started))
++    return render(request, CONTACT_PAGE_TEMPLATE, {"form": form, "contacts": contacts})
+ 
+ 
+ def contacts_for_list():
+@@ -41,3 +70,20 @@ def contacts_for_list():
+     Future search (US-7) and category filters (US-6) belong here, not in the request handling.
+     """
+     return Contact.objects.all()
++
++
++def server_error(request):
++    """The 500 page users see when DEBUG is off. Shows the request_id so a report can be traced."""
++    reference = getattr(request, "request_id", None) or current_request_id() or "unavailable"
++    return HttpResponseServerError(
++        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Venture CRM - Error</title></head>"
++        "<body style=\"font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px;\">"
++        "<h1>Something went wrong</h1>"
++        "<p>Venture CRM could not finish that request. If you were adding a contact, it was not saved.</p>"
++        f"<p>Reference code: <code>{escape(reference)}</code></p>"
++        "</body></html>"
++    )
++
++
++def _ms_since(started):
++    return round((time.perf_counter() - started) * 1000, 1)
+diff --git a/ventureCRM/settings.py b/ventureCRM/settings.py
+index c64719b..bb87032 100644
+--- a/ventureCRM/settings.py
++++ b/ventureCRM/settings.py
+@@ -10,6 +10,8 @@ For the full list of settings and their values, see
+ https://docs.djangoproject.com/en/6.1/ref/settings/
+ """
+ 
++import os
++import sys
+ from pathlib import Path
+ 
+ # Build paths inside the project like this: BASE_DIR / 'subdir'.
+@@ -23,9 +25,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
+ SECRET_KEY = 'django-insecure-))#ez@zx3uo1*iu6g3$0ovkc3t6am(4z0@3r_1rxy+%&c(r&8i'
+ 
+ # SECURITY WARNING: don't run with debug turned on in production!
+-DEBUG = True
++# DEBUG stays on by default. Set DJANGO_DEBUG=False to see the page real users get on an
++# error (it shows the request_id as a reference code; see docs/runbooks/RB-001).
++DEBUG = os.environ.get("DJANGO_DEBUG", "True") != "False"
+ 
+-ALLOWED_HOSTS = []
++ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
+ 
+ 
+ # Application definition
+@@ -41,6 +45,7 @@ INSTALLED_APPS = [
+ ]
+ 
+ MIDDLEWARE = [
++    'tracker.observability.RequestLoggingMiddleware',  # first, so it wraps (and logs) everything
+     'django.middleware.security.SecurityMiddleware',
+     'django.contrib.sessions.middleware.SessionMiddleware',
+     'django.middleware.common.CommonMiddleware',
+@@ -126,3 +131,50 @@ MAILERS = {
+         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+     },
+ }
++
++
++# Logging (IAP M8)
++# Every line is one JSON object (see tracker/observability.py for the field list).
++# Written to the terminal AND to logs/venture-crm.jsonl (rotates at 5 MB, keeps 5 old files).
++# During `manage.py test` only the terminal is used, and only for CRITICAL, so test output stays readable;
++# the tests attach their own handlers to check the log lines.
++RUNNING_TESTS = len(sys.argv) > 1 and sys.argv[1] == "test"
++LOG_DIR = Path(os.environ.get("VENTURE_CRM_LOG_DIR", BASE_DIR / "logs"))
++LOG_LEVEL = os.environ.get("VENTURE_CRM_LOG_LEVEL", "CRITICAL" if RUNNING_TESTS else "INFO")
++
++_LOG_HANDLERS = {
++    "console": {
++        "class": "logging.StreamHandler",
++        "stream": "ext://sys.stdout",
++        "formatter": "json",
++        "level": LOG_LEVEL,
++    },
++    "null": {"class": "logging.NullHandler"},
++}
++if not RUNNING_TESTS:  # pragma: no cover  (tests never write the log file; verified by hand, see docs/m8)
++    LOG_DIR.mkdir(parents=True, exist_ok=True)
++    _LOG_HANDLERS["file"] = {
++        "class": "logging.handlers.RotatingFileHandler",
++        "filename": str(LOG_DIR / "venture-crm.jsonl"),
++        "maxBytes": 5 * 1024 * 1024,
++        "backupCount": 5,
++        "encoding": "utf-8",
++        "formatter": "json",
++        "level": LOG_LEVEL,
++    }
++_APP_HANDLERS = [name for name in _LOG_HANDLERS if name != "null"]
++
++LOGGING = {
++    "version": 1,
++    "disable_existing_loggers": False,
++    "formatters": {"json": {"()": "tracker.observability.JsonFormatter"}},
++    "handlers": _LOG_HANDLERS,
++    "root": {"handlers": _APP_HANDLERS, "level": "WARNING"},
++    "loggers": {
++        "tracker": {"level": "INFO"},
++        # Replace Django's free-text handlers with ours, so its lines are JSON too.
++        "django": {"handlers": _APP_HANDLERS, "level": "INFO", "propagate": False},
++        # runserver's own access line duplicates request.end (and has no request_id), so drop it.
++        "django.server": {"handlers": ["null"], "propagate": False},
++    },
++}
+diff --git a/ventureCRM/urls.py b/ventureCRM/urls.py
+index f8cf5fe..5a24a86 100644
+--- a/ventureCRM/urls.py
++++ b/ventureCRM/urls.py
+@@ -5,3 +5,6 @@ urlpatterns = [
+     path("admin/", admin.site.urls),
+     path("", include("tracker.urls")),
+ ]
++
++# Custom 500 page (used when DEBUG is off): shows the request_id as a reference code.
++handler500 = "tracker.views.server_error"
