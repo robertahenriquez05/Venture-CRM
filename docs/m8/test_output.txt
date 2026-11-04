@@ -1,0 +1,85 @@
+Found 34 test(s).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Operations to perform:
+  Synchronize unmigrated apps: messages, staticfiles
+  Apply all migrations: admin, auth, contenttypes, sessions, tracker
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying sessions.0001_initial... OK
+  Applying tracker.0001_initial... OK
+System check identified no issues (0 silenced).
+test_saving_a_valid_form_stores_exactly_what_was_entered (tracker.test_forms.ContactFormSaveTests.test_saving_a_valid_form_stores_exactly_what_was_entered) ... ok
+test_surrounding_whitespace_is_trimmed_before_saving (tracker.test_forms.ContactFormSaveTests.test_surrounding_whitespace_is_trimmed_before_saving) ... ok
+test_complete_contact_is_valid (tracker.test_forms.ContactFormValidationTests.test_complete_contact_is_valid) ... ok
+test_email_and_company_are_optional (tracker.test_forms.ContactFormValidationTests.test_email_and_company_are_optional) ... ok
+test_every_pipeline_stage_is_accepted (tracker.test_forms.ContactFormValidationTests.test_every_pipeline_stage_is_accepted) ... ok
+test_malformed_email_is_rejected (tracker.test_forms.ContactFormValidationTests.test_malformed_email_is_rejected) ... ok
+test_name_is_required (tracker.test_forms.ContactFormValidationTests.test_name_is_required) ... ok
+test_name_of_121_characters_is_rejected (tracker.test_forms.ContactFormValidationTests.test_name_of_121_characters_is_rejected) ... ok
+test_name_of_exactly_120_characters_is_accepted (tracker.test_forms.ContactFormValidationTests.test_name_of_exactly_120_characters_is_accepted) ... ok
+test_stage_outside_the_pipeline_is_rejected (tracker.test_forms.ContactFormValidationTests.test_stage_outside_the_pipeline_is_rejected) ... ok
+test_whitespace_only_name_is_rejected (tracker.test_forms.ContactFormValidationTests.test_whitespace_only_name_is_rejected) ... ok
+test_rejected_contact_logs_field_names_not_values (tracker.test_logging.ContactEventPrivacyTests.test_rejected_contact_logs_field_names_not_values) ... ok
+test_saved_contact_details_are_not_logged (tracker.test_logging.ContactEventPrivacyTests.test_saved_contact_details_are_not_logged) ... ok
+test_error_page_without_a_request_id_still_renders (tracker.test_logging.DatabaseFailureTests.test_error_page_without_a_request_id_still_renders) ... ok
+test_failed_save_is_logged_with_cause_and_traceable_to_the_users_reference_code (tracker.test_logging.DatabaseFailureTests.test_failed_save_is_logged_with_cause_and_traceable_to_the_users_reference_code) ... ok
+test_django_lines_written_after_the_middleware_keep_the_request_id (tracker.test_logging.RequestTracingTests.test_django_lines_written_after_the_middleware_keep_the_request_id) ... ok
+test_each_request_gets_its_own_id (tracker.test_logging.RequestTracingTests.test_each_request_gets_its_own_id) ... ok
+test_malformed_incoming_request_id_is_replaced (tracker.test_logging.RequestTracingTests.test_malformed_incoming_request_id_is_replaced) ... ok
+test_one_add_contact_is_traceable_from_start_to_end (tracker.test_logging.RequestTracingTests.test_one_add_contact_is_traceable_from_start_to_end) ... ok
+test_valid_incoming_request_id_is_reused (tracker.test_logging.RequestTracingTests.test_valid_incoming_request_id_is_reused) ... ok
+test_every_line_is_json_with_the_same_leading_fields (tracker.test_logging.StructuredLogFormatTests.test_every_line_is_json_with_the_same_leading_fields) ... ok
+test_line_written_outside_a_request_has_null_request_id (tracker.test_logging.StructuredLogFormatTests.test_line_written_outside_a_request_has_null_request_id) ... ok
+test_contact_is_shown_by_its_name (tracker.test_models.ContactModelTests.test_contact_is_shown_by_its_name) ... ok
+test_creation_time_is_recorded_automatically (tracker.test_models.ContactModelTests.test_creation_time_is_recorded_automatically) ... ok
+test_new_contact_starts_in_the_lead_stage (tracker.test_models.ContactModelTests.test_new_contact_starts_in_the_lead_stage) ... ok
+test_stage_is_displayed_with_its_human_readable_label (tracker.test_models.ContactModelTests.test_stage_is_displayed_with_its_human_readable_label) ... ok
+test_contacts_come_back_newest_first (tracker.test_models.ContactOrderingTests.test_contacts_come_back_newest_first) ... ok
+test_add_contact_persists_and_appears_in_list (tracker.tests.WalkingSkeletonTests.test_add_contact_persists_and_appears_in_list) ... ok
+test_invalid_contact_is_rejected (tracker.tests.WalkingSkeletonTests.test_invalid_contact_is_rejected) ... ok
+test_list_page_loads_empty (tracker.tests.WalkingSkeletonTests.test_list_page_loads_empty) ... ok
+test_invalid_submission_shows_errors_and_saves_nothing (tracker.test_acceptance.AddContactAcceptanceTests.test_invalid_submission_shows_errors_and_saves_nothing) ... ok
+test_newest_contact_appears_at_the_top_of_the_list (tracker.test_acceptance.AddContactAcceptanceTests.test_newest_contact_appears_at_the_top_of_the_list) ... ok
+test_post_without_csrf_token_is_rejected (tracker.test_acceptance.AddContactAcceptanceTests.test_post_without_csrf_token_is_rejected) ... ok
+test_user_adds_contact_and_sees_it_in_the_list (tracker.test_acceptance.AddContactAcceptanceTests.test_user_adds_contact_and_sees_it_in_the_list) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 0.831s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+Name                       Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------
+tracker/admin.py               5      0      0      0   100%
+tracker/apps.py                3      0      0      0   100%
+tracker/forms.py               6      0      0      0   100%
+tracker/models.py             17      0      0      0   100%
+tracker/observability.py      52      0      8      0   100%
+tracker/urls.py                3      0      0      0   100%
+tracker/views.py              40      0      4      0   100%
+ventureCRM/settings.py        26      0      0      0   100%
+ventureCRM/urls.py             4      0      0      0   100%
+----------------------------------------------------------------------
+TOTAL                        156      0     12      0   100%
+
+2 empty files skipped.

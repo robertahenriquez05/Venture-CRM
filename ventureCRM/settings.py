@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,9 +25,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-))#ez@zx3uo1*iu6g3$0ovkc3t6am(4z0@3r_1rxy+%&c(r&8i'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG stays on by default. Set DJANGO_DEBUG=False to see the page real users get on an
+# error (it shows the request_id as a reference code; see docs/runbooks/RB-001).
+DEBUG = os.environ.get("DJANGO_DEBUG", "True") != "False"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 
 
 # Application definition
@@ -41,6 +45,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'tracker.observability.RequestLoggingMiddleware',  # first, so it wraps (and logs) everything
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -124,5 +129,52 @@ STATIC_URL = 'static/'
 MAILERS = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+    },
+}
+
+
+# Logging (IAP M8)
+# Every line is one JSON object (see tracker/observability.py for the field list).
+# Written to the terminal AND to logs/venture-crm.jsonl (rotates at 5 MB, keeps 5 old files).
+# During `manage.py test` only the terminal is used, and only for CRITICAL, so test output stays readable;
+# the tests attach their own handlers to check the log lines.
+RUNNING_TESTS = len(sys.argv) > 1 and sys.argv[1] == "test"
+LOG_DIR = Path(os.environ.get("VENTURE_CRM_LOG_DIR", BASE_DIR / "logs"))
+LOG_LEVEL = os.environ.get("VENTURE_CRM_LOG_LEVEL", "CRITICAL" if RUNNING_TESTS else "INFO")
+
+_LOG_HANDLERS = {
+    "console": {
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stdout",
+        "formatter": "json",
+        "level": LOG_LEVEL,
+    },
+    "null": {"class": "logging.NullHandler"},
+}
+if not RUNNING_TESTS:  # pragma: no cover  (tests never write the log file; verified by hand, see docs/m8)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    _LOG_HANDLERS["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": str(LOG_DIR / "venture-crm.jsonl"),
+        "maxBytes": 5 * 1024 * 1024,
+        "backupCount": 5,
+        "encoding": "utf-8",
+        "formatter": "json",
+        "level": LOG_LEVEL,
+    }
+_APP_HANDLERS = [name for name in _LOG_HANDLERS if name != "null"]
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"json": {"()": "tracker.observability.JsonFormatter"}},
+    "handlers": _LOG_HANDLERS,
+    "root": {"handlers": _APP_HANDLERS, "level": "WARNING"},
+    "loggers": {
+        "tracker": {"level": "INFO"},
+        # Replace Django's free-text handlers with ours, so its lines are JSON too.
+        "django": {"handlers": _APP_HANDLERS, "level": "INFO", "propagate": False},
+        # runserver's own access line duplicates request.end (and has no request_id), so drop it.
+        "django.server": {"handlers": ["null"], "propagate": False},
     },
 }

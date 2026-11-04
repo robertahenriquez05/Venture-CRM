@@ -1,0 +1,17 @@
+2026-11-04T20:39:00.687Z  INFO    request.start            rid=42755a46266342ec  method="GET"  path="/"
+2026-11-04T20:39:00.690Z  INFO    contact.list.loaded      rid=42755a46266342ec  contact_count=0  db_ms=1.2
+2026-11-04T20:39:00.699Z  INFO    request.end              rid=42755a46266342ec  method="GET"  path="/"  status=200  duration_ms=12.5
+2026-11-04T20:39:00.711Z  INFO    request.start            rid=0e3f38397a17498b  method="POST"  path="/"
+2026-11-04T20:39:00.728Z  INFO    contact.created          rid=0e3f38397a17498b  contact_id=1  stage="meeting"  db_ms=2.7
+2026-11-04T20:39:00.732Z  INFO    request.end              rid=0e3f38397a17498b  method="POST"  path="/"  status=302  duration_ms=21.1
+2026-11-04T20:39:00.741Z  INFO    request.start            rid=a3b1929fe8384a19  method="GET"  path="/"
+2026-11-04T20:39:00.742Z  INFO    contact.list.loaded      rid=a3b1929fe8384a19  contact_count=1  db_ms=0.8
+2026-11-04T20:39:00.744Z  INFO    request.end              rid=a3b1929fe8384a19  method="GET"  path="/"  status=200  duration_ms=3.5
+2026-11-04T20:39:00.754Z  INFO    request.start            rid=91dee31fc08e433f  method="POST"  path="/"
+2026-11-04T20:39:00.755Z  INFO    contact.create.rejected  rid=91dee31fc08e433f  invalid_fields=["email", "name"]
+2026-11-04T20:39:00.756Z  INFO    contact.list.loaded      rid=91dee31fc08e433f  contact_count=1  db_ms=0.9
+2026-11-04T20:39:00.759Z  INFO    request.end              rid=91dee31fc08e433f  method="POST"  path="/"  status=200  duration_ms=4.9
+2026-11-04T20:39:00.770Z  INFO    request.start            rid=79338936766b4443  method="POST"  path="/"
+2026-11-04T20:39:00.772Z  ERROR   contact.create.failed    rid=79338936766b4443  error_type="OperationalError"  error="attempt to write a readonly database"  db_ms=0.8
+2026-11-04T20:39:00.772Z  ERROR   django.request           rid=79338936766b4443  msg="Internal Server Error: /"  error_type="OperationalError"  error="attempt to write a readonly database"  stack="... django.db.utils.OperationalError: attempt to write a readonly database"
+2026-11-04T20:39:00.781Z  ERROR   request.end              rid=79338936766b4443  method="POST"  path="/"  status=500  duration_ms=11.2
