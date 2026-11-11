@@ -135,3 +135,22 @@ erDiagram with entities, attributes, and cardinalities."
 - Excluded the log-file branch in settings from coverage (`pragma: no cover`), because tests never write the log file on purpose; it was verified by hand (`sample_logs.jsonl` was written by it).
 
 **Verification:** 34/34 tests pass (23 unchanged + 11 new) at 100% statement and branch coverage; `manage.py check` and `makemigrations --check` are clean. `docs/m8/sample_logs.jsonl` was produced by a real `runserver` process; grep confirms no submitted contact values appear in it.
+
+## IAP - Deployment to Render (2026-11-11)
+
+**Tool:** Claude (claude.ai session with a cloud workspace and push access to this repo)
+
+**Prompt:** Asked Claude to get Venture CRM live and running tonight so I can record my IAP Design Defense walkthrough against the deployed app.
+
+**What the AI did:**
+- Moved production settings to environment variables: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS` / `RENDER_EXTERNAL_HOSTNAME`, `CSRF_TRUSTED_ORIGINS`, and HTTPS cookie/proxy settings when DEBUG is off.
+- Database comes from `DATABASE_URL` (dj-database-url): Postgres on Render, SQLite locally and in CI.
+- Added WhiteNoise for static files, gunicorn, `build.sh`, and a `render.yaml` Blueprint (free web service + free Postgres).
+- Added `seed_demo` management command (8 fake contacts, only loads into an empty database) plus 4 tests in `tracker/test_seed.py`.
+- Smoke-tested production mode locally: `build.sh` + gunicorn with DEBUG off, GET 200, POST with CSRF -> 302, admin static files served.
+
+**What I changed / decided:**
+- Postgres instead of SQLite in production, because a free Render web service loses its disk on every restart, which would silently erase contacts.
+- Demo data only, no real contacts, while the URL is public and there is no login yet (US-8).
+
+**Verification:** 38/38 tests pass (34 unchanged + 4 new) at 100% statement and branch coverage; `manage.py check` and `makemigrations --check` are clean.

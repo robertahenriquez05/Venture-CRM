@@ -219,3 +219,6 @@ __marimo__/
 
 # Venture CRM structured logs (IAP M8)
 logs/
+
+# collectstatic output (built on deploy)
+staticfiles/

@@ -14,6 +14,8 @@ import os
 import sys
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,7 +24,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-))#ez@zx3uo1*iu6g3$0ovkc3t6am(4z0@3r_1rxy+%&c(r&8i'
+# Locally the dev key below is used. In production (Render) DJANGO_SECRET_KEY is set,
+# so the committed key is never the one protecting the live site.
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY", 'django-insecure-))#ez@zx3uo1*iu6g3$0ovkc3t6am(4z0@3r_1rxy+%&c(r&8i'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG stays on by default. Set DJANGO_DEBUG=False to see the page real users get on an
@@ -30,6 +36,21 @@ SECRET_KEY = 'django-insecure-))#ez@zx3uo1*iu6g3$0ovkc3t6am(4z0@3r_1rxy+%&c(r&8i
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") != "False"
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
+CSRF_TRUSTED_ORIGINS = []
+
+# Deployment (IAP: live on Render). Render sets RENDER_EXTERNAL_HOSTNAME automatically;
+# DJANGO_ALLOWED_HOSTS (comma-separated) covers any other host. Locally neither is set.
+_EXTRA_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):  # pragma: no cover  (only true on Render)
+    _EXTRA_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
+ALLOWED_HOSTS += _EXTRA_HOSTS
+CSRF_TRUSTED_ORIGINS += [f"https://{h}" for h in _EXTRA_HOSTS]
+
+if not DEBUG:  # pragma: no cover  (production only)
+    # Render terminates HTTPS at its proxy and forwards plain HTTP with this header.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 # Application definition
@@ -47,6 +68,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'tracker.observability.RequestLoggingMiddleware',  # first, so it wraps (and logs) everything
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # serves /static/ (admin CSS) without a separate web server
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -78,11 +100,13 @@ WSGI_APPLICATION = 'ventureCRM.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+# SQLite locally and in tests/CI. On Render, DATABASE_URL points at the managed Postgres
+# database, because a free Render web service's disk is wiped on every restart/redeploy.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+    )
 }
 
 
@@ -121,6 +145,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 
 # Email

@@ -1,0 +1,27 @@
+# Render Blueprint: one free web service + one free Postgres database.
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: venture-crm
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn ventureCRM.wsgi:application
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.7
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: venture-crm-db
+          property: connectionString
+
+databases:
+  - name: venture-crm-db
+    plan: free
+    databaseName: venture_crm
+    user: venture_crm
