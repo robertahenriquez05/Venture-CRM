@@ -11,7 +11,7 @@ from .models import Contact
 
 
 def make_form(**overrides):
-    data = {"name": "Jane Demo", "email": "jane@example.com", "company": "Demo Labs", "stage": "lead"}
+    data = {"name": "Jane Demo", "email": "jane@example.com", "company": "Demo Labs", "stage": "new_lead"}
     data.update(overrides)
     return ContactForm(data=data)
 
@@ -64,12 +64,12 @@ class ContactFormValidationTests(TestCase):
 
 class ContactFormSaveTests(TestCase):
     def test_saving_a_valid_form_stores_exactly_what_was_entered(self):
-        make_form(stage="meeting").save()
+        make_form(stage="meeting_scheduled").save()
 
         saved = Contact.objects.get()
         self.assertEqual(
             (saved.name, saved.email, saved.company, saved.stage),
-            ("Jane Demo", "jane@example.com", "Demo Labs", "meeting"),
+            ("Jane Demo", "jane@example.com", "Demo Labs", "meeting_scheduled"),
         )
 
     def test_surrounding_whitespace_is_trimmed_before_saving(self):

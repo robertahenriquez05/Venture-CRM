@@ -122,15 +122,15 @@ class AddContactAcceptanceTests(LiveServerTestCase):
         self.assertEqual(Contact.objects.get().email, "jane@example.com")
 
     def test_newest_contact_appears_at_the_top_of_the_list(self):
-        self.browser.submit_contact_form({"name": "First Founder", "stage": "lead"})
-        _, _, page = self.browser.submit_contact_form({"name": "Second Founder", "stage": "meeting"})
+        self.browser.submit_contact_form({"name": "First Founder", "stage": "new_lead"})
+        _, _, page = self.browser.submit_contact_form({"name": "Second Founder", "stage": "meeting_scheduled"})
 
         names = [row[0] for row in table_rows(page)]
         self.assertEqual(names, ["Second Founder", "First Founder"])
         self.assertIn("2 saved in database", page)
 
     def test_invalid_submission_shows_errors_and_saves_nothing(self):
-        status, _, page = self.browser.submit_contact_form({"name": "", "email": "not-an-email", "stage": "lead"})
+        status, _, page = self.browser.submit_contact_form({"name": "", "email": "not-an-email", "stage": "new_lead"})
 
         self.assertEqual(status, 200)
         self.assertIn("errorlist", page)                # user is told what is wrong
@@ -140,7 +140,7 @@ class AddContactAcceptanceTests(LiveServerTestCase):
 
     def test_post_without_csrf_token_is_rejected(self):
         with self.assertRaises(urllib.error.HTTPError) as ctx:
-            self.browser.submit_contact_form({"name": "Forged Contact", "stage": "lead"}, include_csrf=False)
+            self.browser.submit_contact_form({"name": "Forged Contact", "stage": "new_lead"}, include_csrf=False)
 
         self.assertEqual(ctx.exception.code, 403)
         self.assertEqual(Contact.objects.count(), 0)

@@ -29,6 +29,6 @@ class WalkingSkeletonTests(TestCase):
         self.assertContains(response, "Contacted")
 
     def test_invalid_contact_is_rejected(self):
-        response = self.client.post(reverse("contact_list"), {"name": "", "email": "not-an-email", "stage": "lead"})
+        response = self.client.post(reverse("contact_list"), {"name": "", "email": "not-an-email", "stage": "new_lead"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Contact.objects.count(), 0)

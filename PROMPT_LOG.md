@@ -154,3 +154,21 @@ erDiagram with entities, attributes, and cardinalities."
 - Demo data only, no real contacts, while the URL is public and there is no login yet (US-8).
 
 **Verification:** 38/38 tests pass (34 unchanged + 4 new) at 100% statement and branch coverage; `manage.py check` and `makemigrations --check` are clean.
+
+## IAP - Align pipeline stages with ADR-001 (2026-11-11)
+
+**Tool:** Claude (same session as the deployment entry above)
+
+**Prompt:** While preparing the design-defense walkthrough, Claude pointed out that `Contact.Stage` in the code (Lead, Contacted, Meeting scheduled, Active relationship, Dormant) did not match the six stages in US-2 and ADR-001. I asked it to fix the code to match the ADR.
+
+**What the AI did:**
+- Changed `Contact.Stage` to the six ADR-001 values (New Lead, Contacted, Meeting Scheduled, Warm, Committed, Cold), default New Lead.
+- Wrote migration `0002_stages_match_adr001`: the AlterField plus a data migration that rewrites existing rows' stage keys (lead -> new_lead, meeting -> meeting_scheduled, active -> warm, dormant -> cold), with a reverse mapping. Checked forward and backward on a database holding old keys.
+- Updated the stage values used in tests, the seed data and `docs/m7/characterize.py`.
+- Added `StagesMatchAdr001Tests`, which pins the stage list to the ADR so the code cannot drift from it silently again.
+
+**What I changed / decided:**
+- Kept the ADR as the source of truth and changed the code, not the other way round.
+- Used this as evidence in the walkthrough: renaming stages needed exactly the code change + data migration that ADR-001 lists as a consequence.
+
+**Verification:** 39/39 tests pass at 100% statement and branch coverage; `makemigrations --check` is clean.

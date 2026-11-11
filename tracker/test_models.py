@@ -12,9 +12,9 @@ from .models import Contact
 
 
 class ContactModelTests(TestCase):
-    def test_new_contact_starts_in_the_lead_stage(self):
+    def test_new_contact_starts_in_the_new_lead_stage(self):
         contact = Contact.objects.create(name="Jane Demo")
-        self.assertEqual(contact.stage, "lead")
+        self.assertEqual(contact.stage, "new_lead")
 
     def test_creation_time_is_recorded_automatically(self):
         before = timezone.now()
@@ -27,15 +27,37 @@ class ContactModelTests(TestCase):
 
     def test_stage_is_displayed_with_its_human_readable_label(self):
         expected = {
-            "lead": "Lead",
+            "new_lead": "New Lead",
             "contacted": "Contacted",
-            "meeting": "Meeting scheduled",
-            "active": "Active relationship",
-            "dormant": "Dormant",
+            "meeting_scheduled": "Meeting Scheduled",
+            "warm": "Warm",
+            "committed": "Committed",
+            "cold": "Cold",
         }
         for value, label in expected.items():
             with self.subTest(stage=value):
                 self.assertEqual(Contact(name="x", stage=value).get_stage_display(), label)
+
+
+class StagesMatchAdr001Tests(TestCase):
+    """Pins the pipeline to the six stages decided in US-2 / ADR-001, in order.
+
+    The code once drifted from the ADR unnoticed; changing a stage must now be a
+    deliberate edit to this test, the ADR and a migration together.
+    """
+
+    def test_pipeline_is_exactly_the_adr_001_stages_in_order(self):
+        self.assertEqual(
+            Contact.Stage.choices,
+            [
+                ("new_lead", "New Lead"),
+                ("contacted", "Contacted"),
+                ("meeting_scheduled", "Meeting Scheduled"),
+                ("warm", "Warm"),
+                ("committed", "Committed"),
+                ("cold", "Cold"),
+            ],
+        )
 
 
 class ContactOrderingTests(TestCase):

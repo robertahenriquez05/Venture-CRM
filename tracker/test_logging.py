@@ -48,7 +48,7 @@ def events_for(lines, request_id):
     return [line["event"] for line in lines if line["request_id"] == request_id]
 
 
-VALID_CONTACT = {"name": "Secret Person", "email": "secret@example.com", "company": "Hidden Co", "stage": "meeting"}
+VALID_CONTACT = {"name": "Secret Person", "email": "secret@example.com", "company": "Hidden Co", "stage": "meeting_scheduled"}
 
 
 class StructuredLogFormatTests(TestCase):
@@ -56,7 +56,7 @@ class StructuredLogFormatTests(TestCase):
         with captured_log() as log:
             self.client.get(reverse("contact_list"))
             self.client.post(reverse("contact_list"), VALID_CONTACT)
-            self.client.post(reverse("contact_list"), {"name": "", "stage": "lead"})
+            self.client.post(reverse("contact_list"), {"name": "", "stage": "new_lead"})
             self.client.get("/no-such-page/")
         self.assertGreaterEqual(len(log["lines"]), 10)
         for line in log["lines"]:
@@ -82,7 +82,7 @@ class RequestTracingTests(TestCase):
         self.assertEqual(events_for(log["lines"], request_id), ["request.start", "contact.created", "request.end"])
         created = next(line for line in log["lines"] if line["event"] == "contact.created")
         self.assertEqual(created["contact_id"], Contact.objects.get().pk)
-        self.assertEqual(created["stage"], "meeting")
+        self.assertEqual(created["stage"], "meeting_scheduled")
         end = log["lines"][-1]
         self.assertEqual((end["event"], end["status"], end["method"]), ("request.end", 302, "POST"))
 
@@ -115,7 +115,7 @@ class RequestTracingTests(TestCase):
 class ContactEventPrivacyTests(TestCase):
     def test_rejected_contact_logs_field_names_not_values(self):
         with captured_log() as log:
-            self.client.post(reverse("contact_list"), {"name": "", "email": "leak-check@not-valid", "stage": "lead"})
+            self.client.post(reverse("contact_list"), {"name": "", "email": "leak-check@not-valid", "stage": "new_lead"})
         rejected = next(line for line in log["lines"] if line["event"] == "contact.create.rejected")
         self.assertEqual(rejected["invalid_fields"], ["email", "name"])
         self.assertNotIn("leak-check", log["text"])

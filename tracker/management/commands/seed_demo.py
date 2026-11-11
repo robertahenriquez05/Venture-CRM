@@ -9,13 +9,13 @@ from django.core.management.base import BaseCommand
 from tracker.models import Contact
 
 DEMO_CONTACTS = [
-    ("Maya Chen", "maya.chen@example.com", "Northline Ventures", Contact.Stage.ACTIVE),
-    ("David Okafor", "d.okafor@example.com", "Bluff City Angels", Contact.Stage.MEETING),
+    ("Maya Chen", "maya.chen@example.com", "Northline Ventures", Contact.Stage.COMMITTED),
+    ("David Okafor", "d.okafor@example.com", "Bluff City Angels", Contact.Stage.MEETING_SCHEDULED),
     ("Priya Raman", "priya@example.com", "MedDevice Advisors", Contact.Stage.CONTACTED),
-    ("Luis Ortega", "luis.ortega@example.com", "Riverside Accelerator", Contact.Stage.LEAD),
-    ("Hannah Brooks", "hbrooks@example.com", "Delta Health Partners", Contact.Stage.ACTIVE),
-    ("Marcus Webb", "marcus.webb@example.com", "Summit Seed Fund", Contact.Stage.DORMANT),
-    ("Elena Rossi", "elena.rossi@example.com", "Regulatory Path Consulting", Contact.Stage.MEETING),
+    ("Luis Ortega", "luis.ortega@example.com", "Riverside Accelerator", Contact.Stage.NEW_LEAD),
+    ("Hannah Brooks", "hbrooks@example.com", "Delta Health Partners", Contact.Stage.WARM),
+    ("Marcus Webb", "marcus.webb@example.com", "Summit Seed Fund", Contact.Stage.COLD),
+    ("Elena Rossi", "elena.rossi@example.com", "Regulatory Path Consulting", Contact.Stage.MEETING_SCHEDULED),
     ("Tom Nguyen", "tom@example.com", "University Tech Transfer", Contact.Stage.CONTACTED),
 ]
 
