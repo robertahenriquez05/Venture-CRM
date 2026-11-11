@@ -1,5 +1,6 @@
 import logging
 import time
+from collections import Counter
 
 from django.db import DatabaseError
 from django.http import HttpResponseServerError
@@ -60,7 +61,17 @@ def show_contact_page(request, form):
     started = time.perf_counter()
     contacts = list(contacts_for_list())
     log_event(log, logging.INFO, "contact.list.loaded", contact_count=len(contacts), db_ms=_ms_since(started))
-    return render(request, CONTACT_PAGE_TEMPLATE, {"form": form, "contacts": contacts})
+    return render(
+        request,
+        CONTACT_PAGE_TEMPLATE,
+        {"form": form, "contacts": contacts, "stage_summary": stage_summary(contacts)},
+    )
+
+
+def stage_summary(contacts):
+    """(value, label, count) for every pipeline stage, in pipeline order. Counted in Python: no extra query."""
+    counts = Counter(contact.stage for contact in contacts)
+    return [(value, label, counts.get(value, 0)) for value, label in Contact.Stage.choices]
 
 
 def contacts_for_list():

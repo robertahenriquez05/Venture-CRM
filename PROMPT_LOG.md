@@ -172,3 +172,16 @@ erDiagram with entities, attributes, and cardinalities."
 - Used this as evidence in the walkthrough: renaming stages needed exactly the code change + data migration that ADR-001 lists as a consequence.
 
 **Verification:** 39/39 tests pass at 100% statement and branch coverage; `makemigrations --check` is clean.
+
+## IAP - Professional UI pass (2026-11-11)
+
+**Tool:** Claude (same session)
+
+**Prompt:** Asked Claude to make the live website look professional before I record the walkthrough.
+
+**What the AI did:**
+- Redesigned `tracker/templates/tracker/contact_list.html`: top bar with logo and a "Demo data" badge, a per-stage summary row, the add-contact form as a card with labelled fields, required markers and inline errors, and the contact list as a card with coloured stage badges (each badge also shows its label, so colour is never the only cue). Responsive down to phone width. Still no JavaScript and no external CSS/fonts.
+- Added `stage_summary()` in `tracker/views.py` (counts per stage computed in Python from the contacts already loaded: no extra query) and 2 tests in `tracker/test_stage_summary.py`.
+- Set `TIME_ZONE = 'America/Chicago'` for display; times are still stored in UTC and log timestamps stay UTC.
+
+**Verification:** 41/41 tests pass at 100% statement and branch coverage. Checked screenshots at desktop and phone widths.
