@@ -126,7 +126,7 @@ class AddContactAcceptanceTests(LiveServerTestCase):
         self.assertIn("1 saved in database", page)
         rows = table_rows(page)
         self.assertEqual(len(rows), 1)
-        name, company, email, stage, tags, added = rows[0]
+        name, company, email, stage, added = rows[0]
         self.assertEqual((name, company, email, stage), ("Jane Demo", "Demo Labs", "jane@example.com", "Contacted"))
         self.assertNotEqual(added, "")
 

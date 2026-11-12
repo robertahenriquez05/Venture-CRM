@@ -2,7 +2,7 @@
 {% block title %}{{ contact.name }}{% endblock %}
 {% block styles %}
     .profile { display: flex; align-items: center; gap: 16px; }
-    .avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #3d7bff, #8b5cf6); color: #fff; box-shadow: 0 8px 22px rgba(61, 123, 255, .35); display: grid; place-items: center;
+    .avatar { width: 56px; height: 56px; border-radius: 50%; background: #22304a; color: var(--accent-2); border: 1px solid var(--accent); font-family: var(--serif); display: grid; place-items: center;
       font-weight: 700; font-size: 20px; flex: none; }
     .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 6px; color: var(--muted); font-size: 14px; }
     .layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 24px; align-items: start; }
@@ -10,8 +10,8 @@
     .timeline { list-style: none; margin: 0; padding: 8px 20px 16px; }
     .timeline li { position: relative; padding: 12px 0 12px 28px; }
     .timeline li + li { border-top: 1px solid var(--line); }
-    .timeline li::before { content: ""; position: absolute; left: 6px; top: 20px; width: 10px; height: 10px; border-radius: 50%; background: var(--k); box-shadow: 0 0 10px var(--k); }
-    .k-call { --k: #6aa8ff; } .k-email { --k: #b69cff; } .k-meeting { --k: #4ade9a; }
+    .timeline li::before { content: ""; position: absolute; left: 6px; top: 20px; width: 10px; height: 10px; border-radius: 50%; background: var(--k); }
+    .k-call { --k: #9fbbe6; } .k-email { --k: #b9add9; } .k-meeting { --k: #93c9a6; }
     .timeline li::after { content: ""; position: absolute; left: 10px; top: 34px; bottom: -12px; width: 2px; background: var(--line); }
     .timeline li:last-child::after { display: none; }
     .t-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }

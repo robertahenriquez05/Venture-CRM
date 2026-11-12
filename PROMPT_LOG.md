@@ -239,3 +239,13 @@ erDiagram with entities, attributes, and cardinalities."
 - Kept ADR-001 as is and added ADR-002 instead of rewriting it, so the walkthrough can show the decision and the later correction side by side.
 
 **Verification:** 110/110 tests pass at 100% statement and branch coverage; `makemigrations --check` clean; board script passes `node --check`; checked screenshots of sign-in, contacts, board, contact page and delete confirmation.
+
+## IAP - Professional restyle (2026-11-12)
+
+**Tool:** Claude (same session)
+
+**Prompt:** Said the dark theme looked "too tech" and asked for something more professional, maybe a different font.
+
+**What the AI did:** Serif headings (Source Serif 4) with Inter for body text; calmer navy palette with a single muted gold accent instead of bright orange and blue; removed glows, gradients and pill shapes (flat cards, 4-6px corners, gold underline for the active nav item, monogram logo). Stage colours desaturated. The contact table now shows tags under the stage badge (five columns instead of six) so it fits without scrolling; the acceptance test's column unpack was updated to match.
+
+**Verification:** 110/110 tests pass; checked desktop screenshots of contacts, pipeline and contact pages.
