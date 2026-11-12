@@ -11,6 +11,8 @@ The app writes structured JSON logs (one object per line) to the terminal and to
 
 ## Running it live (Render)
 
+**Live:** https://venture-crm.onrender.com (placeholder demo data only)
+
 The app is deployed on Render's free tier from `render.yaml` (a Blueprint): one web service running `gunicorn`, and one free Postgres database.
 
 - `build.sh` runs on every deploy: install, `collectstatic`, `migrate`, then `seed_demo` (loads 8 placeholder contacts only if the database is empty).
