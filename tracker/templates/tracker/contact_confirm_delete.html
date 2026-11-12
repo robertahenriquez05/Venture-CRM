@@ -1,0 +1,22 @@
+{% extends "tracker/base.html" %}
+{% block title %}Delete {{ contact.name }}{% endblock %}
+{% block styles %}
+    .confirm { max-width: 560px; margin: 40px auto 0; }
+    .confirm .body { padding: 22px 24px 24px; }
+    .confirm p { margin: 0 0 18px; color: var(--ink); }
+    .confirm .actions { display: flex; gap: 12px; }
+    .confirm .actions .btn { width: auto; flex: 1; }
+{% endblock %}
+{% block content %}
+  <section class="card confirm" aria-labelledby="delete-heading">
+    <div class="card-head"><h2 id="delete-heading">Delete {{ contact.name }}?</h2></div>
+    <div class="body">
+      <p>This permanently deletes the contact, its {{ interaction_count }} logged interaction{{ interaction_count|pluralize }} and its stage history. It can’t be undone.</p>
+      <form method="post" class="actions">
+        {% csrf_token %}
+        <a class="btn btn-ghost" href="{{ contact.get_absolute_url }}">Cancel</a>
+        <button class="btn btn-danger" type="submit">Delete contact</button>
+      </form>
+    </div>
+  </section>
+{% endblock %}

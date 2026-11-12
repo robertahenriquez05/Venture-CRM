@@ -4,6 +4,8 @@ Used for class demos and the deployed site. Safe to run on every deploy:
 - empty database: loads the demo contacts, their follow-ups and interactions;
 - demo contacts already there (matched by their example.com email) with no follow-up and
   no interactions yet: adds those, so a site seeded by an older version gets them too;
+- demo contacts with no stage history yet: gives them tags and a made-up stage history
+  (fine for fake people; real contacts only ever get history recorded as it happens, ADR-002);
 - anything else is left alone. --reset wipes all contacts and loads the demo set again.
 """
 
@@ -12,7 +14,7 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from tracker.models import Contact, Interaction
+from tracker.models import Contact, Interaction, StageChange, Tag
 
 S = Contact.Stage
 K = Interaction.Kind
@@ -46,6 +48,26 @@ DEMO_CONTACTS = [
     ]),
 ]
 
+DEMO_TAGS = {
+    "maya.chen@example.com": ["investor"],
+    "d.okafor@example.com": ["investor"],
+    "priya@example.com": ["advisor", "regulatory"],
+    "luis.ortega@example.com": ["partner"],
+    "hbrooks@example.com": ["customer"],
+    "marcus.webb@example.com": ["investor"],
+    "elena.rossi@example.com": ["regulatory", "advisor"],
+    "tom@example.com": ["partner", "mentor"],
+}
+
+# The path a demo contact took to reach its current stage, in order.
+FORWARD = [S.NEW_LEAD, S.CONTACTED, S.MEETING_SCHEDULED, S.WARM, S.COMMITTED]
+
+
+def demo_stage_path(stage):
+    if stage == S.COLD:
+        return [S.NEW_LEAD, S.CONTACTED, S.MEETING_SCHEDULED, S.COLD]
+    return FORWARD[: FORWARD.index(stage) + 1]
+
 
 class Command(BaseCommand):
     help = "Load placeholder demo contacts (with follow-ups and interactions) if they are not there yet."
@@ -66,6 +88,9 @@ class Command(BaseCommand):
         enriched = self.add_demo_activity()
         if enriched:
             self.stdout.write(self.style.SUCCESS(f"Added demo follow-ups and interactions to {enriched} contacts."))
+        histories = self.add_demo_tags_and_history()
+        if histories:
+            self.stdout.write(self.style.SUCCESS(f"Added demo tags and stage history to {histories} contacts."))
 
     def add_demo_activity(self):
         """Give untouched demo contacts a follow-up and a believable history spread over the past weeks."""
@@ -87,3 +112,31 @@ class Command(BaseCommand):
                 Interaction.objects.filter(pk=interaction.pk).update(created_at=added + step * position)
             enriched += 1
         return enriched
+
+    def add_demo_tags_and_history(self):
+        """Tags plus a stage history spread between when the contact was added and now.
+
+        Only for untagged demo contacts whose history is empty or is just the single automatic first
+        entry, so anything a user has done since (tagging, moving stages) is left alone.
+        """
+        now = timezone.now()
+        tags = {tag.slug: tag for tag in Tag.objects.all()}
+        done = 0
+        for _name, email, _company, stage, *_ in DEMO_CONTACTS:
+            contact = Contact.objects.filter(email=email).first()
+            if contact is None or contact.stage != stage or contact.tags.exists() or contact.stage_changes.count() > 1:
+                continue
+            first = contact.stage_changes.first()
+            if first is not None and first.from_stage:
+                continue
+            contact.stage_changes.all().delete()
+            contact.tags.set([tags[slug] for slug in DEMO_TAGS.get(email, []) if slug in tags])
+            path = demo_stage_path(stage)
+            step = (now - contact.created_at) / (len(path) + 1)
+            previous = ""
+            for position, to_stage in enumerate(path):
+                change = StageChange.objects.create(contact=contact, from_stage=previous, to_stage=to_stage)
+                StageChange.objects.filter(pk=change.pk).update(changed_at=contact.created_at + step * position)
+                previous = to_stage
+            done += 1
+        return done

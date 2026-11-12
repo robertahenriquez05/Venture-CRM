@@ -92,10 +92,31 @@
     .due-today { color: var(--accent-2); background: rgba(255, 179, 107, .12); border-color: rgba(255, 179, 107, .3); }
     .due-upcoming { color: var(--blue); background: rgba(106, 168, 255, .12); border-color: rgba(106, 168, 255, .3); }
 
+    .nav { display: flex; gap: 4px; margin-left: 18px; }
+    .nav a { color: var(--muted); font-weight: 600; font-size: 14px; padding: 6px 12px; border-radius: 8px; }
+    .nav a:hover { color: var(--strong); background: rgba(255,255,255,.05); text-decoration: none; }
+    .nav a[aria-current="page"] { color: var(--strong); background: rgba(106, 168, 255, .12); box-shadow: inset 0 0 0 1px rgba(106, 168, 255, .3); }
+    .logout { display: flex; align-items: center; gap: 10px; }
+    .logout .who { font-size: 13px; color: var(--muted); }
+    .logout button { font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: transparent;
+      border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+    .logout button:hover { border-color: var(--muted); }
+    .tag { display: inline-block; font-size: 12px; font-weight: 600; color: #c9d4ea; background: rgba(255,255,255,.06);
+      border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+    #id_tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    #id_tags label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 500; font-size: 13px; cursor: pointer;
+      background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 10px; }
+    #id_tags label:has(input:checked) { border-color: var(--blue-2); background: rgba(61, 123, 255, .14); color: var(--strong); }
+    .field #id_tags input { width: auto; margin: 0; accent-color: var(--blue-2); }
+    .btn-danger { background: linear-gradient(135deg, #ff8b7d, #e5484d); box-shadow: 0 8px 22px rgba(229, 72, 77, .28); color: #1f0606; }
+    .btn-ghost { background: transparent; box-shadow: none; color: var(--ink); border: 1px solid var(--line-2); }
+    .btn-ghost:hover { color: var(--strong); border-color: var(--muted); }
     footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 13px; }
     {% block styles %}{% endblock %}
+    @media (max-width: 900px) { .logout .who { display: none; } .search input { width: 200px; } }
     @media (max-width: 720px) {
       .search input { width: 100%; }
+      .nav { margin-left: 0; }
       .topbar-inner { flex-wrap: wrap; }
       .search { order: 3; width: 100%; margin-left: 0; }
       .pill-demo { margin-left: auto; }
@@ -110,10 +131,23 @@
         <span class="logo" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 32 32"><path d="M7 9l9 15 9-15" stroke="#1a0e05" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <span class="brand">Venture<span>CRM</span></span>
       </a>
-      <form class="search" method="get" action="{% url 'contact_list' %}" role="search">
-        <input type="search" name="q" value="{{ query|default:'' }}" placeholder="Search name, company or email" aria-label="Search contacts">
-      </form>
-      <div class="pill-demo" title="All contacts on this site are fictional placeholder data">Demo data</div>
+      {% if user.is_authenticated %}
+        <nav class="nav" aria-label="Main">
+          <a href="{% url 'contact_list' %}"{% if nav == "contacts" %} aria-current="page"{% endif %}>Contacts</a>
+          <a href="{% url 'pipeline' %}"{% if nav == "pipeline" %} aria-current="page"{% endif %}>Pipeline</a>
+        </nav>
+        <form class="search" method="get" action="{% url 'contact_list' %}" role="search">
+          <input type="search" name="q" value="{{ query|default:'' }}" placeholder="Search name, company or email" aria-label="Search contacts">
+        </form>
+        <div class="pill-demo" title="All contacts on this site are fictional placeholder data">Demo data</div>
+        <form class="logout" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <span class="who" title="Signed in">{{ user.get_username }}</span>
+          <button type="submit">Sign out</button>
+        </form>
+      {% else %}
+        <div class="pill-demo" style="margin-left: auto" title="All contacts on this site are fictional placeholder data">Demo data</div>
+      {% endif %}
     </div>
   </header>
 

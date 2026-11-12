@@ -1,11 +1,11 @@
-from django.test import TestCase
 from django.urls import reverse
 
 from .models import Contact
+from .testing import SignedInTestCase
 from .views import stage_summary
 
 
-class StageSummaryTests(TestCase):
+class StageSummaryTests(SignedInTestCase):
     def test_every_stage_is_listed_in_pipeline_order_with_its_count(self):
         contacts = [Contact(name="a", stage="warm"), Contact(name="b", stage="warm"), Contact(name="c", stage="cold")]
         summary = stage_summary(contacts)

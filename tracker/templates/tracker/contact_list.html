@@ -30,6 +30,12 @@
     td.date { color: var(--muted); white-space: nowrap; }
     td.empty { text-align: center; color: var(--muted); padding: 40px 16px; }
     .clear-search { font-size: 13px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+    .chip { font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 12px; }
+    .chip:hover { color: var(--strong); text-decoration: none; border-color: var(--muted); }
+    .chip[aria-current="true"] { color: var(--strong); background: rgba(61, 123, 255, .16); border-color: var(--blue-2); }
+    td.tags-cell { white-space: normal; }
+    td.tags-cell .tag + .tag { margin-left: 4px; }
     @media (max-width: 960px) {
       .layout { grid-template-columns: 1fr; }
       .stages { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -93,12 +99,18 @@
 
       <section class="card" aria-labelledby="list-heading">
         <div class="card-head">
-          <h2 id="list-heading">{% if query %}Results for “{{ query }}”{% else %}All contacts{% endif %}</h2>
-          <span class="hint">{% if query %}{{ contacts|length }} found · <a class="clear-search" href="{% url 'contact_list' %}">clear search</a>{% else %}{{ contacts|length }} total{% endif %}</span>
+          <h2 id="list-heading">{% if query %}Results for “{{ query }}”{% elif active_tag %}{{ active_tag.name }}s{% else %}All contacts{% endif %}</h2>
+          <span class="hint">{% if query or active_tag %}{{ contacts|length }} found · <a class="clear-search" href="{% url 'contact_list' %}">clear</a>{% else %}{{ contacts|length }} total{% endif %}</span>
         </div>
+        {% if tags %}
+          <nav class="chips" aria-label="Filter by tag">
+            <a class="chip" href="{% url 'contact_list' %}"{% if not active_tag %} aria-current="true"{% endif %}>All</a>
+            {% for t in tags %}<a class="chip" href="?tag={{ t.slug }}"{% if active_tag == t %} aria-current="true"{% endif %}>{{ t.name }}</a>{% endfor %}
+          </nav>
+        {% endif %}
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Stage</th><th>Added</th></tr></thead>
+            <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Stage</th><th>Tags</th><th>Added</th></tr></thead>
             <tbody>
               {% for c in contacts %}
                 <tr>
@@ -106,13 +118,16 @@
                   <td>{{ c.company }}</td>
                   <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}</td>
                   <td><span class="badge s-{{ c.stage }}"><span class="dot" aria-hidden="true"></span>{{ c.get_stage_display }}</span></td>
+                  <td class="tags-cell">{% for t in c.tags.all %}<span class="tag">{{ t.name }}</span>{% endfor %}</td>
                   <td class="date" title="{{ c.created_at|date:'M j, Y g:i a' }}">{{ c.created_at|date:"M j, Y" }}</td>
                 </tr>
               {% empty %}
                 {% if query %}
-                  <tr><td class="empty" colspan="5">No contacts match “{{ query }}”.</td></tr>
+                  <tr><td class="empty" colspan="6">No contacts match “{{ query }}”.</td></tr>
+                {% elif active_tag %}
+                  <tr><td class="empty" colspan="6">No contacts tagged {{ active_tag.name }} yet.</td></tr>
                 {% else %}
-                  <tr><td class="empty" colspan="5">No contacts yet — add one with the form.</td></tr>
+                  <tr><td class="empty" colspan="6">No contacts yet — add one with the form.</td></tr>
                 {% endif %}
               {% endfor %}
             </tbody>

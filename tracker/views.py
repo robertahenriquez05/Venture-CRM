@@ -5,18 +5,21 @@ from collections import Counter
 from django.contrib import messages
 from django.db import DatabaseError
 from django.db.models import Q
-from django.http import HttpResponseServerError
+from django.contrib.auth.decorators import login_not_required
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseServerError, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.html import escape
 from django.views.decorators.http import require_POST
 
 from .forms import ContactForm, InteractionForm
-from .models import Contact
+from .models import Contact, Tag
 from .observability import current_request_id, log_event
 
 CONTACT_PAGE_TEMPLATE = "tracker/contact_list.html"
 CONTACT_DETAIL_TEMPLATE = "tracker/contact_detail.html"
+PIPELINE_TEMPLATE = "tracker/pipeline.html"
+DELETE_TEMPLATE = "tracker/contact_confirm_delete.html"
 FOLLOW_UP_PANEL_SIZE = 6
 
 log = logging.getLogger("tracker.contacts")
@@ -66,15 +69,18 @@ def show_contact_page(request, form):
     """Render the contact list page around whichever form it is given (blank or with errors)."""
     started = time.perf_counter()
     query = request.GET.get("q", "").strip()
-    contacts = list(contacts_for_list(query))
-    # The summary and follow-ups always describe the whole pipeline, not just the search results.
-    everyone = list(Contact.objects.all()) if query else contacts
+    tags = list(Tag.objects.all())
+    active_tag = next((tag for tag in tags if tag.slug == request.GET.get("tag")), None)
+    contacts = list(contacts_for_list(query, active_tag))
+    # The summary and follow-ups always describe the whole pipeline, not just the search/filter results.
+    everyone = list(Contact.objects.all()) if (query or active_tag) else contacts
     log_event(
         log,
         logging.INFO,
         "contact.list.loaded",
         contact_count=len(contacts),
         searched=bool(query),  # whether, never what: the query can be a person's name
+        tag=active_tag.slug if active_tag else None,
         db_ms=_ms_since(started),
     )
     return render(
@@ -83,7 +89,10 @@ def show_contact_page(request, form):
         {
             "form": form,
             "contacts": contacts,
+            "nav": "contacts",
             "query": query,
+            "tags": tags,
+            "active_tag": active_tag,
             "total_count": len(everyone),
             "stage_summary": stage_summary(everyone),
             "follow_ups": follow_ups_due(everyone),
@@ -104,16 +113,67 @@ def follow_ups_due(contacts, limit=FOLLOW_UP_PANEL_SIZE):
     return scheduled[:limit]
 
 
-def contacts_for_list(query=""):
+def contacts_for_list(query="", tag=None):
     """The single place that decides which contacts the list page shows.
 
     Order comes from Contact.Meta.ordering (newest first, pinned by the M6 ordering tests).
-    US-7 search matches name, company or email, case-insensitively. Category filters (US-6) belong here too.
+    US-7 search matches name, company or email, case-insensitively; US-6 filters by one tag.
     """
-    contacts = Contact.objects.all()
+    contacts = Contact.objects.prefetch_related("tags")
     if query:
         contacts = contacts.filter(Q(name__icontains=query) | Q(company__icontains=query) | Q(email__icontains=query))
+    if tag is not None:
+        contacts = contacts.filter(tags=tag)
     return contacts
+
+
+def pipeline(request):
+    """The board: one column per stage, in pipeline order. Still one query on one table (ADR-001)."""
+    started = time.perf_counter()
+    contacts = list(Contact.objects.prefetch_related("tags"))
+    columns = [
+        {"value": value, "label": label, "contacts": [c for c in contacts if c.stage == value]}
+        for value, label in Contact.Stage.choices
+    ]
+    log_event(log, logging.INFO, "pipeline.loaded", contact_count=len(contacts), db_ms=_ms_since(started))
+    return render(request, PIPELINE_TEMPLATE, {"nav": "pipeline", "columns": columns, "total_count": len(contacts)})
+
+
+@require_POST
+def move_stage(request, pk):
+    """Move one contact to another stage (the board's drag-and-drop). Records history via Contact.save()."""
+    contact = get_object_or_404(Contact, pk=pk)
+    stage = request.POST.get("stage", "")
+    if stage not in Contact.Stage.values:
+        log_event(log, logging.INFO, "contact.stage.rejected", contact_id=contact.pk)
+        return HttpResponseBadRequest("Unknown stage.")
+    previous = contact.stage
+    if stage != previous:
+        contact.stage = stage
+        contact.save(update_fields=["stage"])
+        log_event(log, logging.INFO, "contact.stage.changed", contact_id=contact.pk, from_stage=previous, to_stage=stage)
+    if request.headers.get("Accept") == "application/json":
+        return JsonResponse({"id": contact.pk, "stage": contact.stage, "label": contact.get_stage_display()})
+    messages.success(request, f"{contact.name} moved to {contact.get_stage_display()}.")
+    return redirect("pipeline")
+
+
+def delete_contact(request, pk):
+    """GET: confirmation page. POST: delete the contact with its interactions and history."""
+    contact = get_object_or_404(Contact, pk=pk)
+    if request.method != "POST":
+        return render(request, DELETE_TEMPLATE, {"contact": contact, "interaction_count": contact.interactions.count()})
+    contact_id, name = contact.pk, contact.name
+    contact.delete()
+    log_event(log, logging.INFO, "contact.deleted", contact_id=contact_id)
+    messages.success(request, f"{name} was deleted.")
+    return redirect("contact_list")
+
+
+@login_not_required
+def healthz(request):
+    """Render's health check: no login, no database, no template."""
+    return HttpResponse("ok", content_type="text/plain")
 
 
 def contact_detail(request, pk):
@@ -168,10 +228,12 @@ def show_contact_detail(request, contact, form, interaction_form):
         request,
         CONTACT_DETAIL_TEMPLATE,
         {
+            "nav": "contacts",
             "contact": contact,
             "form": form,
             "interaction_form": interaction_form,
             "interactions": list(contact.interactions.all()),
+            "stage_changes": list(contact.stage_changes.all()),
             "today": timezone.localdate(),
         },
     )

@@ -4,7 +4,7 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from .management.commands.seed_demo import DEMO_CONTACTS
-from .models import Contact, Interaction
+from .models import Contact, Interaction, StageChange
 
 
 class SeedDemoCommandTests(TestCase):
@@ -64,3 +64,42 @@ class SeedDemoCommandTests(TestCase):
         # Maya had no follow-up and no interactions, so she is enriched; the others had a follow-up set.
         self.assertTrue(Interaction.objects.filter(contact=maya).exists())
         self.assertEqual(Interaction.objects.exclude(contact=maya).count(), 0)
+
+
+class SeedTagsAndHistoryTests(TestCase):
+    def run_seed(self, *args):
+        call_command("seed_demo", *args, stdout=StringIO())
+
+    def test_demo_contacts_get_tags_and_a_stage_path_ending_at_their_stage(self):
+        self.run_seed()
+        maya = Contact.objects.get(email="maya.chen@example.com")
+        self.assertEqual(list(maya.tags.values_list("slug", flat=True)), ["investor"])
+        path = [c.to_stage for c in maya.stage_changes.order_by("changed_at")]
+        self.assertEqual(path, ["new_lead", "contacted", "meeting_scheduled", "warm", "committed"])
+        marcus = Contact.objects.get(email="marcus.webb@example.com")
+        self.assertEqual(marcus.stage_changes.first().to_stage, "cold")
+
+    def test_second_run_changes_nothing(self):
+        self.run_seed()
+        before = list(StageChange.objects.values_list("pk", flat=True))
+        self.run_seed()
+        self.assertEqual(list(StageChange.objects.values_list("pk", flat=True)), before)
+
+    def test_contacts_moved_by_the_user_keep_their_real_history(self):
+        self.run_seed()
+        maya = Contact.objects.get(email="maya.chen@example.com")
+        maya.tags.clear()
+        maya.stage = "cold"
+        maya.save()
+        count = maya.stage_changes.count()
+        self.run_seed()
+        self.assertEqual(maya.stage_changes.count(), count)
+
+    def test_a_single_real_move_is_not_overwritten(self):
+        self.run_seed()
+        tom = Contact.objects.get(email="tom@example.com")
+        tom.tags.clear()
+        tom.stage_changes.all().delete()
+        StageChange.objects.create(contact=tom, from_stage="new_lead", to_stage="contacted")
+        self.run_seed()
+        self.assertEqual(list(tom.stage_changes.values_list("from_stage", "to_stage")), [("new_lead", "contacted")])

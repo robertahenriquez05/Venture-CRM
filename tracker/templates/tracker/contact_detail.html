@@ -22,6 +22,17 @@
     .log-form { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 0 14px; padding: 18px 20px 4px; }
     .log-form .full { grid-column: 1 / -1; }
     .log-form .btn { width: auto; padding: 9px 18px; margin-bottom: 16px; }
+    .head-actions { display: flex; gap: 10px; }
+    .head-actions { flex: none; }
+    .head-actions .btn { width: auto; padding: 8px 14px; font-size: 14px; white-space: nowrap; }
+    .history { list-style: none; margin: 0; padding: 8px 20px 16px; }
+    .history li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 0; font-size: 14px; }
+    .history li + li { border-top: 1px solid var(--line); }
+    .history .arrow { color: var(--faint); }
+    .history .when { margin-left: auto; color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .since { padding: 14px 20px 0; color: var(--muted); font-size: 14px; }
+    .since b { color: var(--strong); }
+    .right > .card + .card { margin-top: 24px; }
     @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
     @media (max-width: 520px) { .log-form { grid-template-columns: 1fr; } }
 {% endblock %}
@@ -39,9 +50,14 @@
             {% if contact.follow_up_status %}
               <span class="due due-{{ contact.follow_up_status }}">Follow up {% if contact.follow_up_status == "overdue" %}overdue · {% elif contact.follow_up_status == "today" %}today · {% endif %}{{ contact.follow_up_date|date:"M j, Y" }}</span>
             {% endif %}
+            {% for t in contact.tags.all %}<span class="tag">{{ t.name }}</span>{% endfor %}
             <span>Added {{ contact.created_at|date:"M j, Y" }}</span>
           </div>
         </div>
+      </div>
+      <div class="head-actions">
+        <a class="btn btn-ghost" href="{% url 'pipeline' %}">View on board</a>
+        <a class="btn btn-ghost" href="{% url 'delete_contact' contact.pk %}">Delete</a>
       </div>
     </div>
 
@@ -58,6 +74,7 @@
         </form>
       </section>
 
+      <div class="right">
       <section class="card" aria-labelledby="timeline-heading" id="timeline">
         <div class="card-head">
           <h2 id="timeline-heading">Interactions</h2>
@@ -82,5 +99,29 @@
           <p class="t-empty">No interactions yet. Log your first call, email or meeting above.</p>
         {% endif %}
       </section>
+
+      <section class="card" aria-labelledby="history-heading">
+        <div class="card-head">
+          <h2 id="history-heading">Stage history</h2>
+          <span class="hint">{{ stage_changes|length }} change{{ stage_changes|length|pluralize }} · newest first</span>
+        </div>
+        {% with since=contact.current_stage_since %}
+          <p class="since">{% if since %}In <b>{{ contact.get_stage_display }}</b> for {{ since|timesince }}.{% else %}In <b>{{ contact.get_stage_display }}</b> since before stage history was recorded.{% endif %}</p>
+        {% endwith %}
+        {% if stage_changes %}
+          <ul class="history">
+            {% for h in stage_changes %}
+              <li>
+                {% if h.from_stage %}<span class="badge s-{{ h.from_stage }}"><span class="dot" aria-hidden="true"></span>{{ h.get_from_stage_display }}</span><span class="arrow" aria-label="to">→</span>{% else %}<span class="hint">Started in</span>{% endif %}
+                <span class="badge s-{{ h.to_stage }}"><span class="dot" aria-hidden="true"></span>{{ h.get_to_stage_display }}</span>
+                <span class="when">{{ h.changed_at|date:"M j, Y · g:i a" }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="t-empty">No stage changes recorded yet. History is kept from now on.</p>
+        {% endif %}
+      </section>
+      </div>
     </div>
 {% endblock %}

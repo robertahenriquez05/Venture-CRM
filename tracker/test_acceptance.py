@@ -25,6 +25,7 @@ from html.parser import HTMLParser
 from django.test import LiveServerTestCase
 
 from .models import Contact
+from .testing import TEST_PASSWORD, TEST_USERNAME, make_test_user
 
 
 class _ContactTableParser(HTMLParser):
@@ -73,6 +74,17 @@ class Browser:
         with self.opener.open(self.base_url + path) as resp:
             return resp.status, resp.geturl(), resp.read().decode("utf-8")
 
+    def sign_in(self, username, password):
+        """Fill in the real login form (US-8), CSRF token included, and follow the redirect."""
+        _, _, page = self.get("/login/")
+        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', page).group(1)
+        body = urllib.parse.urlencode(
+            {"username": username, "password": password, "csrfmiddlewaretoken": token}
+        ).encode()
+        request = urllib.request.Request(self.base_url + "/login/", data=body, method="POST")
+        with self.opener.open(request) as resp:
+            return resp.status, resp.geturl(), resp.read().decode("utf-8")
+
     def submit_contact_form(self, fields, include_csrf=True):
         """Load the page, then submit the add-contact form like a user clicking 'Add contact'."""
         _, _, page = self.get("/")
@@ -97,7 +109,9 @@ class AddContactAcceptanceTests(LiveServerTestCase):
     """User story: as a founder, I can add a contact and immediately see it in my list."""
 
     def setUp(self):
+        make_test_user()
         self.browser = Browser(self.live_server_url)
+        self.browser.sign_in(TEST_USERNAME, TEST_PASSWORD)
 
     def test_user_adds_contact_and_sees_it_in_the_list(self):
         status, final_url, page = self.browser.submit_contact_form(
@@ -112,7 +126,7 @@ class AddContactAcceptanceTests(LiveServerTestCase):
         self.assertIn("1 saved in database", page)
         rows = table_rows(page)
         self.assertEqual(len(rows), 1)
-        name, company, email, stage, added = rows[0]
+        name, company, email, stage, tags, added = rows[0]
         self.assertEqual((name, company, email, stage), ("Jane Demo", "Demo Labs", "jane@example.com", "Contacted"))
         self.assertNotEqual(added, "")
 
@@ -144,3 +158,26 @@ class AddContactAcceptanceTests(LiveServerTestCase):
 
         self.assertEqual(ctx.exception.code, 403)
         self.assertEqual(Contact.objects.count(), 0)
+
+
+class SignInAcceptanceTests(LiveServerTestCase):
+    """User story US-8: my contacts are only visible after I sign in."""
+
+    def test_signed_out_visitor_is_sent_to_the_login_page(self):
+        status, final_url, page = Browser(self.live_server_url).get("/")
+        self.assertEqual(status, 200)
+        self.assertEqual(final_url, self.live_server_url + "/login/?next=/")
+        self.assertIn("Sign in", page)
+        self.assertNotIn("Contacts (", page)
+
+    def test_correct_password_signs_in_and_shows_the_contacts(self):
+        make_test_user()
+        status, final_url, page = Browser(self.live_server_url).sign_in(TEST_USERNAME, TEST_PASSWORD)
+        self.assertEqual((status, final_url), (200, self.live_server_url + "/"))
+        self.assertIn("saved in database", page)
+
+    def test_wrong_password_stays_on_the_login_page_with_an_error(self):
+        make_test_user()
+        status, final_url, page = Browser(self.live_server_url).sign_in(TEST_USERNAME, "wrong-password")
+        self.assertEqual(final_url, self.live_server_url + "/login/")
+        self.assertIn("errorlist", page)

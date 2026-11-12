@@ -1,0 +1,25 @@
+{% extends "tracker/base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block styles %}
+    .login { max-width: 420px; margin: 56px auto 0; }
+    .login .intro { padding: 22px 24px 0; color: var(--muted); font-size: 14px; margin: 0; }
+    .login h1 { font-size: 26px; }
+    .login-head { text-align: center; margin-bottom: 18px; }
+{% endblock %}
+{% block content %}
+  <div class="login">
+    <div class="login-head">
+      <h1>Welcome back</h1>
+      <p class="sub">Sign in to your Venture CRM</p>
+    </div>
+    <section class="card" aria-label="Sign in">
+      <form class="stack" method="post" action="{% url 'login' %}" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<ul class="errorlist nonfield">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        {% for field in form %}{% include "tracker/_field.html" %}{% endfor %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <button class="btn" type="submit">Sign in</button>
+      </form>
+    </section>
+  </div>
+{% endblock %}

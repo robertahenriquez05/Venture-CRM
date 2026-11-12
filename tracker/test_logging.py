@@ -12,7 +12,9 @@ from contextlib import contextmanager
 from unittest import mock
 
 from django.db import OperationalError
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory
+
+from .testing import SignedInTestCase
 from django.urls import reverse
 
 from . import views
@@ -51,7 +53,7 @@ def events_for(lines, request_id):
 VALID_CONTACT = {"name": "Secret Person", "email": "secret@example.com", "company": "Hidden Co", "stage": "meeting_scheduled"}
 
 
-class StructuredLogFormatTests(TestCase):
+class StructuredLogFormatTests(SignedInTestCase):
     def test_every_line_is_json_with_the_same_leading_fields(self):
         with captured_log() as log:
             self.client.get(reverse("contact_list"))
@@ -74,7 +76,7 @@ class StructuredLogFormatTests(TestCase):
         self.assertEqual(line["msg"], "startup")
 
 
-class RequestTracingTests(TestCase):
+class RequestTracingTests(SignedInTestCase):
     def test_one_add_contact_is_traceable_from_start_to_end(self):
         with captured_log() as log:
             response = self.client.post(reverse("contact_list"), VALID_CONTACT)
@@ -112,7 +114,7 @@ class RequestTracingTests(TestCase):
         self.assertEqual(log["lines"][1]["level"], "WARNING")
 
 
-class ContactEventPrivacyTests(TestCase):
+class ContactEventPrivacyTests(SignedInTestCase):
     def test_rejected_contact_logs_field_names_not_values(self):
         with captured_log() as log:
             self.client.post(reverse("contact_list"), {"name": "", "email": "leak-check@not-valid", "stage": "new_lead"})
@@ -127,7 +129,7 @@ class ContactEventPrivacyTests(TestCase):
             self.assertNotIn(value, log["text"])
 
 
-class DatabaseFailureTests(TestCase):
+class DatabaseFailureTests(SignedInTestCase):
     """The failure in docs/runbooks/RB-001: the list loads, but saving a contact gives a 500."""
 
     def test_failed_save_is_logged_with_cause_and_traceable_to_the_users_reference_code(self):

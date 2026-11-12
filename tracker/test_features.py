@@ -4,11 +4,11 @@ follow-ups panel (US-5) and search (US-7)."""
 from datetime import timedelta
 from unittest import mock
 
-from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from .models import Contact, Interaction
+from .testing import SignedInTestCase
 from .test_logging import captured_log
 from .views import follow_ups_due
 
@@ -17,7 +17,7 @@ def detail_url(contact):
     return reverse("contact_detail", args=[contact.pk])
 
 
-class ContactDetailTests(TestCase):
+class ContactDetailTests(SignedInTestCase):
     def setUp(self):
         self.contact = Contact.objects.create(name="Jane Demo", email="jane@example.com", company="Demo Labs")
 
@@ -74,7 +74,7 @@ class ContactDetailTests(TestCase):
         self.assertNotIn("Renamed Person", log["text"])
 
 
-class InteractionLogTests(TestCase):
+class InteractionLogTests(SignedInTestCase):
     def setUp(self):
         self.contact = Contact.objects.create(name="Jane Demo")
         self.url = reverse("log_interaction", args=[self.contact.pk])
@@ -125,7 +125,7 @@ class InteractionLogTests(TestCase):
         self.assertEqual(str(Interaction(contact=self.contact, kind="email", note="x")), "Email with Jane Demo")
 
 
-class FollowUpTests(TestCase):
+class FollowUpTests(SignedInTestCase):
     def setUp(self):
         self.today = timezone.localdate()
 
@@ -164,7 +164,7 @@ class FollowUpTests(TestCase):
         self.assertContains(self.client.get(detail_url(contact)), "Follow up overdue")
 
 
-class SearchTests(TestCase):
+class SearchTests(SignedInTestCase):
     def setUp(self):
         Contact.objects.create(name="Maya Chen", company="Northline Ventures", email="maya@example.com")
         Contact.objects.create(name="Tom Nguyen", company="Tech Transfer", email="tom@uni.example")

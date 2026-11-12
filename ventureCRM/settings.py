@@ -73,11 +73,16 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.LoginRequiredMiddleware',  # US-8: every page needs a login unless marked otherwise
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'ventureCRM.urls'
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'contact_list'
+LOGOUT_REDIRECT_URL = 'login'
 
 TEMPLATES = [
     {

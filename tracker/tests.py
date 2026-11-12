@@ -1,10 +1,10 @@
-from django.test import TestCase
 from django.urls import reverse
 
 from .models import Contact
+from .testing import SignedInTestCase
 
 
-class WalkingSkeletonTests(TestCase):
+class WalkingSkeletonTests(SignedInTestCase):
     """End-to-end through the real stack: HTTP request -> view -> form -> ORM -> database -> rendered page."""
 
     def test_list_page_loads_empty(self):

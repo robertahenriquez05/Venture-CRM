@@ -1,0 +1,106 @@
+{% extends "tracker/base.html" %}
+{% block title %}Pipeline{% endblock %}
+{% block styles %}
+    .board { display: grid; grid-template-columns: repeat(6, minmax(168px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+    .column { min-width: 0; background: rgba(17, 26, 46, .7); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 420px; }
+    .column-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); position: relative; }
+    .column-head::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; border-radius: 14px 14px 0 0; background: var(--c); }
+    .column-head h2 { margin: 0; font-size: 14px; color: var(--strong); }
+    .column-head .count { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--muted); background: rgba(255,255,255,.06); border-radius: 999px; padding: 1px 8px; }
+    .drop { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 10px; border-radius: 0 0 var(--radius) var(--radius); transition: background .12s, box-shadow .12s; }
+    .drop.over { background: rgba(106, 168, 255, .08); box-shadow: inset 0 0 0 2px rgba(106, 168, 255, .45); }
+    .deal { background: linear-gradient(180deg, var(--card-2), var(--card)); border: 1px solid var(--line-2); border-radius: 12px; padding: 12px; cursor: grab; box-shadow: var(--shadow); }
+    .deal:hover { border-color: #3b4a6d; }
+    .deal.dragging { opacity: .5; cursor: grabbing; }
+    .deal a { font-weight: 700; color: var(--strong); }
+    .deal .co { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .deal .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .deal select { margin-top: 10px; width: 100%; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 5px 8px; }
+    .js .deal select, .js .deal .move-btn { display: none; }
+    .move-btn { margin-top: 6px; font: inherit; font-size: 12px; color: var(--ink); background: transparent; border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 8px; }
+    .empty-col { color: var(--faint); font-size: 13px; text-align: center; padding: 16px 6px; border: 1px dashed var(--line-2); border-radius: 10px; }
+    .toast { position: fixed; right: 24px; bottom: 24px; background: var(--card-2); border: 1px solid var(--line-2); color: var(--ink);
+      border-radius: 10px; padding: 10px 14px; font-size: 14px; box-shadow: var(--shadow); opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none; }
+    .toast.show { opacity: 1; transform: none; }
+    .toast.err { border-color: rgba(255, 122, 107, .5); color: var(--danger); }
+{% endblock %}
+{% block content %}
+    <div class="page-head">
+      <div>
+        <h1>Pipeline</h1>
+        <p class="sub">{{ total_count }} contact{{ total_count|pluralize }} · drag a card to another stage to move it</p>
+      </div>
+    </div>
+    <div class="board" id="board">
+      {% for col in columns %}
+        <section class="column s-{{ col.value }}" aria-labelledby="col-{{ col.value }}">
+          <div class="column-head"><span class="dot" aria-hidden="true"></span><h2 id="col-{{ col.value }}">{{ col.label }}</h2><span class="count" data-count>{{ col.contacts|length }}</span></div>
+          <div class="drop" data-stage="{{ col.value }}">
+            {% for c in col.contacts %}
+              <article class="deal" draggable="true" data-id="{{ c.pk }}" data-url="{% url 'move_stage' c.pk %}">
+                <a href="{{ c.get_absolute_url }}">{{ c.name }}</a>
+                <span class="co">{{ c.company|default:"—" }}</span>
+                {% if c.follow_up_status or c.tags.all %}
+                  <div class="meta">
+                    {% if c.follow_up_status %}<span class="due due-{{ c.follow_up_status }}">{% if c.follow_up_status == "overdue" %}Overdue{% elif c.follow_up_status == "today" %}Today{% else %}{{ c.follow_up_date|date:"M j" }}{% endif %}</span>{% endif %}
+                    {% for t in c.tags.all %}<span class="tag">{{ t.name }}</span>{% endfor %}
+                  </div>
+                {% endif %}
+                <form method="post" action="{% url 'move_stage' c.pk %}">
+                  {% csrf_token %}
+                  <select name="stage" aria-label="Move {{ c.name }} to stage">
+                    {% for other in columns %}<option value="{{ other.value }}"{% if other.value == c.stage %} selected{% endif %}>{{ other.label }}</option>{% endfor %}
+                  </select>
+                  <button class="move-btn" type="submit">Move</button>
+                </form>
+              </article>
+            {% empty %}
+              <p class="empty-col">No contacts</p>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script>
+      (function () {
+        document.documentElement.classList.add("js");
+        var csrf = document.querySelector("[name=csrfmiddlewaretoken]");
+        var toast = document.getElementById("toast"), timer;
+        function say(text, isError) {
+          toast.textContent = text; toast.className = "toast show" + (isError ? " err" : "");
+          clearTimeout(timer); timer = setTimeout(function () { toast.className = "toast"; }, 2200);
+        }
+        function recount() {
+          document.querySelectorAll(".column").forEach(function (col) {
+            var n = col.querySelectorAll(".deal").length;
+            col.querySelector("[data-count]").textContent = n;
+            var empty = col.querySelector(".empty-col");
+            if (n && empty) empty.remove();
+            if (!n && !empty) { var p = document.createElement("p"); p.className = "empty-col"; p.textContent = "No contacts"; col.querySelector(".drop").appendChild(p); }
+          });
+        }
+        var dragged = null;
+        document.querySelectorAll(".deal").forEach(function (card) {
+          card.addEventListener("dragstart", function (e) { dragged = card; card.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+          card.addEventListener("dragend", function () { card.classList.remove("dragging"); });
+        });
+        document.querySelectorAll(".drop").forEach(function (zone) {
+          zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("over"); });
+          zone.addEventListener("dragleave", function () { zone.classList.remove("over"); });
+          zone.addEventListener("drop", function (e) {
+            e.preventDefault(); zone.classList.remove("over");
+            if (!dragged) return;
+            var card = dragged, from = card.parentElement, stage = zone.dataset.stage;
+            if (from === zone) return;
+            zone.prepend(card); recount();
+            var body = new FormData(); body.append("stage", stage); body.append("csrfmiddlewaretoken", csrf.value);
+            fetch(card.dataset.url, { method: "POST", body: body, headers: { "Accept": "application/json" }, credentials: "same-origin" })
+              .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+              .then(function (data) { say(card.querySelector("a").textContent + " → " + data.label); })
+              .catch(function () { from.prepend(card); recount(); say("Couldn’t move that card. Try again.", true); });
+          });
+        });
+      })();
+    </script>
+{% endblock %}

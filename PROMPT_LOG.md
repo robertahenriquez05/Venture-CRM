@@ -219,3 +219,23 @@ erDiagram with entities, attributes, and cardinalities."
 **What the AI did:** Reworked the CSS in `base.html`, `contact_list.html` and `contact_detail.html` into a dark navy theme (`color-scheme: dark`, so native date pickers and selects match): soft blue/orange background glow, translucent sticky top bar, gradient cards, orange gradient buttons, glowing stage dots and badges tuned for dark backgrounds, coloured top edge per stage card, and a connected interaction timeline. Markup and behaviour unchanged.
 
 **Verification:** 72/72 tests pass; checked desktop screenshots of the list and detail pages.
+
+## IAP - Pipeline board, tags, stage history, delete, sign-in (2026-11-12)
+
+**Tool:** Claude (same session)
+
+**Prompt:** Asked Claude to add everything still missing: a login, a pipeline board, tags, stage history and deleting contacts.
+
+**What the AI did:**
+- **Stage history (ADR-002, new):** `StageChange` (append-only) written in `Contact.save()` inside a transaction whenever the stage is set or changes; detail page shows the history and "In <stage> for …". No backfill for existing contacts (stated on the page). ADR-002 documents why: the history ADR-001 gave up is the one cost that can't be undone later.
+- **Pipeline board** (`/pipeline/`): six columns; drag-and-drop posts to `POST /contacts/<id>/stage/` (JSON response, rolls the card back on error); without JavaScript each card has a dropdown + Move button.
+- **Tags (US-6):** `Tag` model + `Contact.tags` many-to-many (the M3 CONTACT_TAG join table), six default categories created by migration `0004`; tag chips filter the list; checkboxes on the forms; Tags column in the list.
+- **Delete:** confirmation page (GET) then delete (POST), cascading to interactions and history.
+- **Sign-in (US-8):** `LoginRequiredMiddleware` on every page; styled login page; sign-out button; `auth.login` / `auth.logout` / `auth.login.failed` log events with user id only. `ensure_demo_user` creates the `demo` account from `VENTURE_CRM_DEMO_PASSWORD`, which `render.yaml` has Render generate. `/healthz` (no login) is now Render's health check.
+- Tests now sign in (`tracker/testing.py`: `SignedInTestCase`; the acceptance tests fill in the real login form). 37 new tests in `tracker/test_board_tags_history.py`, `tracker/test_seed.py` and `tracker/test_acceptance.py`.
+- Seed data: demo contacts get tags and a plausible stage path.
+
+**What I changed / decided:**
+- Kept ADR-001 as is and added ADR-002 instead of rewriting it, so the walkthrough can show the decision and the later correction side by side.
+
+**Verification:** 109/109 tests pass at 100% statement and branch coverage; `makemigrations --check` clean; board script passes `node --check`; checked screenshots of sign-in, contacts, board, contact page and delete confirmation.
