@@ -238,4 +238,4 @@ erDiagram with entities, attributes, and cardinalities."
 **What I changed / decided:**
 - Kept ADR-001 as is and added ADR-002 instead of rewriting it, so the walkthrough can show the decision and the later correction side by side.
 
-**Verification:** 109/109 tests pass at 100% statement and branch coverage; `makemigrations --check` clean; board script passes `node --check`; checked screenshots of sign-in, contacts, board, contact page and delete confirmation.
+**Verification:** 110/110 tests pass at 100% statement and branch coverage; `makemigrations --check` clean; board script passes `node --check`; checked screenshots of sign-in, contacts, board, contact page and delete confirmation.

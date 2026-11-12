@@ -237,3 +237,14 @@ class EnsureDemoUserCommandTests(TestCase):
         self.assertIn("Updated", self.run_command(VENTURE_CRM_DEMO_PASSWORD="second-pass"))
         user.refresh_from_db()
         self.assertTrue(user.check_password("second-pass"))
+
+
+class AdminTests(TestCase):
+    def test_admin_contact_page_shows_history_read_only(self):
+        admin_user = get_user_model().objects.create_superuser("admin", "admin@example.com", TEST_PASSWORD)
+        self.client.force_login(admin_user)
+        contact = Contact.objects.create(name="Jane Demo")
+        response = self.client.get(reverse("admin:tracker_contact_change", args=[contact.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Stage changes")
+        self.assertNotContains(response, "Add another Stage change")
