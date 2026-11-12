@@ -209,3 +209,13 @@ erDiagram with entities, attributes, and cardinalities."
 - Did **not** build stage history (StageChange): that is the change my design-defense walkthrough argues for, so I left it as the stated next step.
 
 **Verification:** 72/72 tests pass at 100% statement and branch coverage; `check` and `makemigrations --check` are clean; checked desktop and phone screenshots of the list, search and detail pages.
+
+## IAP - Dark theme (2026-11-12)
+
+**Tool:** Claude (same session)
+
+**Prompt:** Asked to replace the white background with colours that look cool but still professional.
+
+**What the AI did:** Reworked the CSS in `base.html`, `contact_list.html` and `contact_detail.html` into a dark navy theme (`color-scheme: dark`, so native date pickers and selects match): soft blue/orange background glow, translucent sticky top bar, gradient cards, orange gradient buttons, glowing stage dots and badges tuned for dark backgrounds, coloured top edge per stage card, and a connected interaction timeline. Markup and behaviour unchanged.
+
+**Verification:** 72/72 tests pass; checked desktop screenshots of the list and detail pages.
