@@ -1,0 +1,84 @@
+{% extends "tracker/base.html" %}
+{% block title %}{{ contact.name }}{% endblock %}
+{% block styles %}
+    .profile { display: flex; align-items: center; gap: 16px; }
+    .avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center;
+      font-weight: 700; font-size: 20px; flex: none; }
+    .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 6px; color: var(--muted); font-size: 14px; }
+    .layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 24px; align-items: start; }
+    .layout > * { min-width: 0; }
+    .timeline { list-style: none; margin: 0; padding: 8px 20px 16px; }
+    .timeline li { position: relative; padding: 12px 0 12px 28px; }
+    .timeline li + li { border-top: 1px solid #efede7; }
+    .timeline li::before { content: ""; position: absolute; left: 6px; top: 20px; width: 10px; height: 10px; border-radius: 50%; background: var(--k); }
+    .k-call { --k: #2f6fb0; } .k-email { --k: #6b4fbb; } .k-meeting { --k: #1f7a4d; }
+    .t-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+    .t-kind { font-weight: 700; color: var(--navy); }
+    .t-time { color: var(--muted); white-space: nowrap; }
+    .t-note { margin: 4px 0 0; white-space: pre-line; }
+    .t-empty { padding: 18px 20px; color: var(--muted); font-size: 14px; }
+    .log-form { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 0 14px; padding: 18px 20px 4px; }
+    .log-form .full { grid-column: 1 / -1; }
+    .log-form .btn { width: auto; padding: 9px 18px; margin-bottom: 16px; }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) { .log-form { grid-template-columns: 1fr; } }
+{% endblock %}
+{% block content %}
+    <div class="crumbs"><a href="{% url 'contact_list' %}">← All contacts</a></div>
+    <div class="page-head">
+      <div class="profile">
+        <div class="avatar" aria-hidden="true">{{ contact.name|slice:":1"|upper }}</div>
+        <div>
+          <h1>{{ contact.name }}</h1>
+          <div class="meta">
+            <span class="badge s-{{ contact.stage }}"><span class="dot" aria-hidden="true"></span>{{ contact.get_stage_display }}</span>
+            {% if contact.company %}<span>{{ contact.company }}</span>{% endif %}
+            {% if contact.email %}<a href="mailto:{{ contact.email }}">{{ contact.email }}</a>{% endif %}
+            {% if contact.follow_up_status %}
+              <span class="due due-{{ contact.follow_up_status }}">Follow up {% if contact.follow_up_status == "overdue" %}overdue · {% elif contact.follow_up_status == "today" %}today · {% endif %}{{ contact.follow_up_date|date:"M j, Y" }}</span>
+            {% endif %}
+            <span>Added {{ contact.created_at|date:"M j, Y" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <section class="card" aria-labelledby="edit-heading">
+        <div class="card-head">
+          <h2 id="edit-heading">Details, stage &amp; follow-up</h2>
+          <span class="hint"><span class="req">*</span> required</span>
+        </div>
+        <form class="stack" method="post" action="{{ contact.get_absolute_url }}" novalidate>
+          {% csrf_token %}
+          {% for field in form %}{% include "tracker/_field.html" %}{% endfor %}
+          <button class="btn" type="submit">Save changes</button>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="timeline-heading" id="timeline">
+        <div class="card-head">
+          <h2 id="timeline-heading">Interactions</h2>
+          <span class="hint">{{ interactions|length }} logged · newest first</span>
+        </div>
+        <form class="log-form" method="post" action="{% url 'log_interaction' contact.pk %}" novalidate>
+          {% csrf_token %}
+          {% with field=interaction_form.kind %}{% include "tracker/_field.html" %}{% endwith %}
+          {% with field=interaction_form.note %}{% include "tracker/_field.html" %}{% endwith %}
+          <div class="full"><button class="btn" type="submit">Log interaction</button></div>
+        </form>
+        {% if interactions %}
+          <ul class="timeline">
+            {% for i in interactions %}
+              <li class="k-{{ i.kind }}">
+                <div class="t-head"><span class="t-kind">{{ i.get_kind_display }}</span><span class="t-time">{{ i.created_at|date:"M j, Y · g:i a" }}</span></div>
+                <p class="t-note">{{ i.note }}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="t-empty">No interactions yet. Log your first call, email or meeting above.</p>
+        {% endif %}
+      </section>
+    </div>
+{% endblock %}

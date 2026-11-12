@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Venture CRM{% endblock %} · Venture CRM</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314213D'/%3E%3Cpath d='M9 10l7 13 7-13' stroke='%23E8833A' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --navy: #14213d; --navy-2: #1f2f52; --ink: #1c2434; --muted: #5b6577; --line: #e3e1da;
+      --bg: #f6f5f1; --card: #ffffff; --accent: #e8833a; --accent-ink: #a4511c; --blue: #2f6fb0;
+      --danger: #b42318; --danger-bg: #fdecea; --ok: #1f7a4d; --ok-bg: #e3f4ea; --radius: 12px;
+      --shadow: 0 1px 2px rgba(20, 33, 61, .06), 0 4px 16px rgba(20, 33, 61, .06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar { background: var(--navy); color: #fff; }
+    .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+    .home { display: flex; align-items: center; gap: 10px; color: #fff; }
+    .home:hover { text-decoration: none; }
+    .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--navy-2); display: grid; place-items: center; }
+    .brand { font-weight: 700; font-size: 17px; letter-spacing: .2px; }
+    .brand span { color: var(--accent); }
+    .search { margin-left: auto; display: flex; }
+    .search input { width: 280px; font: inherit; font-size: 14px; color: #fff; background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: 7px 12px; }
+    .search input::placeholder { color: #b8c2d6; }
+    .search input:focus { outline: none; background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.45); }
+    .pill-demo { font-size: 12px; font-weight: 600; letter-spacing: .3px; color: #dce3f0; white-space: nowrap;
+      border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 4px 10px; }
+
+    main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 48px; }
+    .crumbs { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 28px; line-height: 1.2; color: var(--navy); }
+    .sub { margin: 4px 0 0; color: var(--muted); }
+
+    .flash { background: var(--ok-bg); color: var(--ok); border: 1px solid #bfe3cd; border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 18px; font-weight: 600; font-size: 14px; }
+
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .col > .card + .card { margin-top: 24px; }
+    .card-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .card-head h2 { margin: 0; font-size: 16px; color: var(--navy); }
+    .hint { font-size: 13px; color: var(--muted); }
+    .req { color: var(--accent-ink); }
+
+    form.stack { padding: 18px 20px 20px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+    .field input, .field select, .field textarea { width: 100%; font: inherit; color: var(--ink); background: #fff;
+      border: 1px solid #cfccc3; border-radius: 8px; padding: 9px 11px; }
+    .field textarea { resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,111,176,.18); }
+    .field.has-error input, .field.has-error select, .field.has-error textarea { border-color: var(--danger); }
+    .errorlist { list-style: none; margin: 6px 0 0; padding: 0; color: var(--danger); font-size: 13px; }
+    .errorlist.nonfield { margin: 0 0 14px; }
+    .btn { display: inline-block; width: 100%; font: inherit; font-weight: 600; color: #fff; background: var(--navy); border: 0;
+      border-radius: 8px; padding: 11px 16px; cursor: pointer; text-align: center; }
+    .btn:hover { background: var(--navy-2); text-decoration: none; }
+
+    .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;
+      border-radius: 999px; padding: 3px 10px; color: var(--c); background: var(--bgc); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--c); }
+    .s-new_lead { --c: #5b6577; --bgc: #f0f1f4; }
+    .s-contacted { --c: #2f6fb0; --bgc: #e8f0f9; }
+    .s-meeting_scheduled { --c: #6b4fbb; --bgc: #efeafb; }
+    .s-warm { --c: #a4511c; --bgc: #fcebdd; }
+    .s-committed { --c: #1f7a4d; --bgc: #e3f4ea; }
+    .s-cold { --c: #3f4a5c; --bgc: #e6e8ec; }
+    .due { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+      border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+    .due-overdue { color: var(--danger); background: var(--danger-bg); }
+    .due-today { color: var(--accent-ink); background: #fcebdd; }
+    .due-upcoming { color: var(--blue); background: #e8f0f9; }
+
+    footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 13px; }
+    {% block styles %}{% endblock %}
+    @media (max-width: 720px) {
+      .search input { width: 100%; }
+      .topbar-inner { flex-wrap: wrap; }
+      .search { order: 3; width: 100%; margin-left: 0; }
+      .pill-demo { margin-left: auto; }
+      .page-head { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="home" href="{% url 'contact_list' %}">
+        <span class="logo" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 32 32"><path d="M7 9l9 15 9-15" stroke="#E8833A" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="brand">Venture<span>CRM</span></span>
+      </a>
+      <form class="search" method="get" action="{% url 'contact_list' %}" role="search">
+        <input type="search" name="q" value="{{ query|default:'' }}" placeholder="Search name, company or email" aria-label="Search contacts">
+      </form>
+      <div class="pill-demo" title="All contacts on this site are fictional placeholder data">Demo data</div>
+    </div>
+  </header>
+
+  <main>
+    {% for message in messages %}<div class="flash" role="status">{{ message }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>Venture CRM · a lightweight founder CRM built with Django · every contact shown here is fictional placeholder data.</footer>
+</body>
+</html>

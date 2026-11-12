@@ -1,63 +1,21 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Contacts · Venture CRM</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314213D'/%3E%3Cpath d='M9 10l7 13 7-13' stroke='%23E8833A' stroke-width='3.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <style>
-    :root {
-      --navy: #14213d; --navy-2: #1f2f52; --ink: #1c2434; --muted: #5b6577; --line: #e3e1da;
-      --bg: #f6f5f1; --card: #ffffff; --accent: #e8833a; --accent-ink: #a4511c; --blue: #2f6fb0;
-      --danger: #b42318; --radius: 12px;
-      --shadow: 0 1px 2px rgba(20, 33, 61, .06), 0 4px 16px rgba(20, 33, 61, .06);
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink);
-      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif; }
-    a { color: var(--blue); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
-    .topbar { background: var(--navy); color: #fff; }
-    .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
-    .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--navy-2); display: grid; place-items: center; }
-    .brand { font-weight: 700; font-size: 17px; letter-spacing: .2px; }
-    .brand span { color: var(--accent); }
-    .pill-demo { margin-left: auto; font-size: 12px; font-weight: 600; letter-spacing: .3px; color: #dce3f0;
-      border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 4px 10px; }
-
-    main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 48px; }
-    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-    h1 { margin: 0; font-size: 28px; line-height: 1.2; color: var(--navy); }
-    .sub { margin: 4px 0 0; color: var(--muted); }
-
+{% extends "tracker/base.html" %}
+{% block title %}Contacts{% endblock %}
+{% block styles %}
     .stages { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
     .stage-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
     .stage-card .n { font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.1; }
     .stage-card .l { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-top: 2px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-
     .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; align-items: start; }
     .layout > * { min-width: 0; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .card-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
-    .card-head h2 { margin: 0; font-size: 16px; color: var(--navy); }
-    .card-head .hint { font-size: 13px; color: var(--muted); }
-
-    form { padding: 18px 20px 20px; }
-    .field { margin-bottom: 14px; }
-    .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
-    .field label .req { color: var(--accent-ink); }
-    .field input, .field select { width: 100%; font: inherit; color: var(--ink); background: #fff;
-      border: 1px solid #cfccc3; border-radius: 8px; padding: 9px 11px; }
-    .field input:focus, .field select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,111,176,.18); }
-    .field.has-error input, .field.has-error select { border-color: var(--danger); }
-    .errorlist { list-style: none; margin: 6px 0 0; padding: 0; color: var(--danger); font-size: 13px; }
-    .errorlist.nonfield { margin: 0 0 14px; }
-    button { width: 100%; font: inherit; font-weight: 600; color: #fff; background: var(--navy); border: 0;
-      border-radius: 8px; padding: 11px 16px; cursor: pointer; }
-    button:hover { background: var(--navy-2); }
-
+    .fu-list { list-style: none; margin: 0; padding: 6px 0; }
+    .fu-list li { display: flex; align-items: center; gap: 12px; padding: 10px 20px; }
+    .fu-list li + li { border-top: 1px solid #efede7; }
+    .fu-who { flex: 1; min-width: 0; }
+    .fu-who a { font-weight: 600; color: var(--navy); }
+    .fu-who .co { display: block; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fu-when { text-align: right; font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .fu-when .due { display: block; margin-bottom: 2px; }
+    .fu-empty { padding: 18px 20px; color: var(--muted); font-size: 14px; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th { text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
@@ -65,49 +23,22 @@
     td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid #efede7; vertical-align: middle; }
     tbody tr:last-child td { border-bottom: 0; }
     tbody tr:hover td { background: #fbfaf7; }
-    td.name { font-weight: 600; color: var(--navy); white-space: nowrap; }
-    td.date { color: var(--muted); white-space: nowrap; font-size: 14px; }
+    td.name { white-space: nowrap; }
+    td.name a { font-weight: 600; color: var(--navy); }
+    td.date { color: var(--muted); white-space: nowrap; }
     td.empty { text-align: center; color: var(--muted); padding: 40px 16px; }
-
-    .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;
-      border-radius: 999px; padding: 3px 10px; border: 1px solid transparent; }
-    .s-new_lead { --c: #5b6577; --bgc: #f0f1f4; }
-    .s-contacted { --c: #2f6fb0; --bgc: #e8f0f9; }
-    .s-meeting_scheduled { --c: #6b4fbb; --bgc: #efeafb; }
-    .s-warm { --c: #a4511c; --bgc: #fcebdd; }
-    .s-committed { --c: #1f7a4d; --bgc: #e3f4ea; }
-    .s-cold { --c: #3f4a5c; --bgc: #e6e8ec; }
-    .badge { color: var(--c); background: var(--bgc); }
-    .dot { background: var(--c); }
-
-    footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 13px; }
-
+    .clear-search { font-size: 13px; }
     @media (max-width: 960px) {
       .layout { grid-template-columns: 1fr; }
       .stages { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
-    @media (max-width: 520px) {
-      .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .page-head { flex-direction: column; align-items: flex-start; }
-    }
-  </style>
-</head>
-<body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="logo" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 32 32"><path d="M7 9l9 15 9-15" stroke="#E8833A" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <div class="brand">Venture<span>CRM</span></div>
-      <div class="pill-demo" title="All contacts on this site are fictional placeholder data">Demo data</div>
-    </div>
-  </header>
-
-  <main>
+    @media (max-width: 520px) { .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+{% endblock %}
+{% block content %}
     <div class="page-head">
       <div>
         <h1>Contacts</h1>
-        <p class="sub">{{ contacts|length }} saved in database · newest first</p>
+        <p class="sub">{{ total_count }} saved in database · newest first</p>
       </div>
     </div>
 
@@ -121,29 +52,47 @@
     </section>
 
     <div class="layout">
-      <section class="card" aria-labelledby="add-heading">
-        <div class="card-head">
-          <h2 id="add-heading">Add a contact</h2>
-          <span class="hint"><span class="req" style="color: var(--accent-ink)">*</span> required</span>
-        </div>
-        <form method="post" novalidate>
-          {% csrf_token %}
-          {% if form.non_field_errors %}<ul class="errorlist nonfield">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-          {% for field in form %}
-            <div class="field{% if field.errors %} has-error{% endif %}">
-              <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}</label>
-              {{ field }}
-              {{ field.errors }}
-            </div>
-          {% endfor %}
-          <button type="submit">Add contact</button>
-        </form>
-      </section>
+      <div class="col">
+        <section class="card" aria-labelledby="fu-heading">
+          <div class="card-head">
+            <h2 id="fu-heading">Follow-ups</h2>
+            <span class="hint">soonest first</span>
+          </div>
+          {% if follow_ups %}
+            <ul class="fu-list">
+              {% for f in follow_ups %}
+                <li>
+                  <div class="fu-who"><a href="{{ f.get_absolute_url }}">{{ f.name }}</a><span class="co">{{ f.company|default:"—" }}</span></div>
+                  <div class="fu-when">
+                    <span class="due due-{{ f.follow_up_status }}">{% if f.follow_up_status == "overdue" %}Overdue{% elif f.follow_up_status == "today" %}Today{% else %}Upcoming{% endif %}</span>
+                    {{ f.follow_up_date|date:"M j" }}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="fu-empty">No follow-ups scheduled. Open a contact to set one.</p>
+          {% endif %}
+        </section>
+
+        <section class="card" aria-labelledby="add-heading">
+          <div class="card-head">
+            <h2 id="add-heading">Add a contact</h2>
+            <span class="hint"><span class="req">*</span> required</span>
+          </div>
+          <form class="stack" method="post" action="{% url 'contact_list' %}" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<ul class="errorlist nonfield">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            {% for field in form %}{% include "tracker/_field.html" %}{% endfor %}
+            <button class="btn" type="submit">Add contact</button>
+          </form>
+        </section>
+      </div>
 
       <section class="card" aria-labelledby="list-heading">
         <div class="card-head">
-          <h2 id="list-heading">All contacts</h2>
-          <span class="hint">{{ contacts|length }} total</span>
+          <h2 id="list-heading">{% if query %}Results for “{{ query }}”{% else %}All contacts{% endif %}</h2>
+          <span class="hint">{% if query %}{{ contacts|length }} found · <a class="clear-search" href="{% url 'contact_list' %}">clear search</a>{% else %}{{ contacts|length }} total{% endif %}</span>
         </div>
         <div class="table-wrap">
           <table>
@@ -151,22 +100,22 @@
             <tbody>
               {% for c in contacts %}
                 <tr>
-                  <td class="name">{{ c.name }}</td>
+                  <td class="name"><a href="{{ c.get_absolute_url }}">{{ c.name }}</a></td>
                   <td>{{ c.company }}</td>
                   <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}</td>
                   <td><span class="badge s-{{ c.stage }}"><span class="dot" aria-hidden="true"></span>{{ c.get_stage_display }}</span></td>
                   <td class="date" title="{{ c.created_at|date:'M j, Y g:i a' }}">{{ c.created_at|date:"M j, Y" }}</td>
                 </tr>
               {% empty %}
-                <tr><td class="empty" colspan="5">No contacts yet — add one with the form.</td></tr>
+                {% if query %}
+                  <tr><td class="empty" colspan="5">No contacts match “{{ query }}”.</td></tr>
+                {% else %}
+                  <tr><td class="empty" colspan="5">No contacts yet — add one with the form.</td></tr>
+                {% endif %}
               {% endfor %}
             </tbody>
           </table>
         </div>
       </section>
     </div>
-  </main>
-
-  <footer>Venture CRM · a lightweight founder CRM built with Django · every contact shown here is fictional placeholder data.</footer>
-</body>
-</html>
+{% endblock %}

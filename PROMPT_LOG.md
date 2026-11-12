@@ -185,3 +185,27 @@ erDiagram with entities, attributes, and cardinalities."
 - Set `TIME_ZONE = 'America/Chicago'` for display; times are still stored in UTC and log timestamps stay UTC.
 
 **Verification:** 41/41 tests pass at 100% statement and branch coverage. Checked screenshots at desktop and phone widths.
+
+## IAP - Detail page, follow-ups, interaction log, search (2026-11-11)
+
+**Tool:** Claude (same session)
+
+**Prompt:** Said the deployed app felt a bit plain and asked to add more, like scheduling and updating contacts.
+
+**What the AI did:**
+- Built the M2/M3 stories that were designed but not built:
+  - **US-2 / US-4:** contact detail page (`/contacts/<id>/`) to edit details, move the stage, and set or clear a follow-up date (`Contact.follow_up_date`, a field rather than a FOLLOW_UP table, as in the M3 model).
+  - **US-3:** `Interaction` model (call / email / meeting, required note, auto timestamp) and a timeline on the detail page, newest first; `POST /contacts/<id>/interactions/` (GET returns 405).
+  - **US-5:** "Follow-ups" panel on the list page: soonest first, marked Overdue / Today / Upcoming.
+  - **US-7:** search box (name, company or email, case-insensitive) in `contacts_for_list()`, the seam M7 left for it.
+- Moved the shared layout into `base.html`; contact names in the list link to their detail page.
+- New log events: `contact.updated` (changed field names), `contact.update.rejected`, `interaction.logged`, `interaction.rejected`; `contact.list.loaded` gained `searched` (true/false). Still no names, notes or search text in the log.
+- `seed_demo` now gives demo contacts follow-ups and a short interaction history, spaced over the past weeks, and fills them in on a site seeded by the earlier version.
+- Migration `0003_follow_ups_and_interactions`; admin shows interactions inline.
+- 31 new tests (`tracker/test_features.py`, more in `tracker/test_seed.py`).
+
+**What I changed / decided:**
+- Kept the list table's five columns unchanged (the M6 acceptance tests read them); the follow-up status lives in its own panel instead.
+- Did **not** build stage history (StageChange): that is the change my design-defense walkthrough argues for, so I left it as the stated next step.
+
+**Verification:** 72/72 tests pass at 100% statement and branch coverage; `check` and `makemigrations --check` are clean; checked desktop and phone screenshots of the list, search and detail pages.
