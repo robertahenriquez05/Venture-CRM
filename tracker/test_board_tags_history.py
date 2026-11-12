@@ -247,4 +247,10 @@ class AdminTests(TestCase):
         response = self.client.get(reverse("admin:tracker_contact_change", args=[contact.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Stage changes")
-        self.assertNotContains(response, "Add another Stage change")
+        from django.contrib.admin.sites import site
+
+        from .admin import StageChangeInline
+
+        inline = StageChangeInline(Contact, site)
+        self.assertFalse(inline.has_add_permission(response.wsgi_request, contact))
+        self.assertFalse(inline.can_delete)
